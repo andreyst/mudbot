@@ -9,7 +9,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${fileDirname}",
+            "program": "main.go",
             "args": [
                 "localhost:3040",
                 "rmud.org:3040"
