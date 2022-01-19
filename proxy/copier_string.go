@@ -31,12 +31,11 @@ func _() {
 	_ = x[STATE_TELNET_SB-2]
 	_ = x[STATE_TELNET_MCCPV2-3]
 	_ = x[STATE_TELNET_MCCPV2_IAC-4]
-	_ = x[STATE_TELNET_COMMAND_WITH_OP-5]
 }
 
-const _copierState_name = "STATE_STARTSTATE_TELNET_IACSTATE_TELNET_SBSTATE_TELNET_MCCPV2STATE_TELNET_MCCPV2_IACSTATE_TELNET_COMMAND_WITH_OP"
+const _copierState_name = "STATE_STARTSTATE_TELNET_IACSTATE_TELNET_SBSTATE_TELNET_MCCPV2STATE_TELNET_MCCPV2_IAC"
 
-var _copierState_index = [...]uint8{0, 11, 27, 42, 61, 84, 112}
+var _copierState_index = [...]uint8{0, 11, 27, 42, 61, 84}
 
 func (i copierState) String() string {
 	if i < 0 || i >= copierState(len(_copierState_index)-1) {

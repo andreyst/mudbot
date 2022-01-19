@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-func PrintHex(buf []byte) string {
+func ByteToHex(buf []byte) string {
 	cmd := exec.Command("xxd")
 	cmd.Stdin = bytes.NewReader(buf)
 	var out bytes.Buffer
@@ -17,4 +17,8 @@ func PrintHex(buf []byte) string {
 	}
 
 	return out.String()
+}
+
+func StrToHex(s string) string {
+	return ByteToHex([]byte(s))
 }

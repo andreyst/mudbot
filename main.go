@@ -20,8 +20,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	p := proxy.NewServer()
-	p.Start(os.Args[1], os.Args[2])
+	s := proxy.NewServer(os.Args[1], os.Args[2])
+	s.Start()
 
 	os.Exit(0)
 }

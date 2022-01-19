@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"compress/zlib"
 	"io"
+	"mudbot/bot"
 	"mudbot/botutil"
-	"mudbot/parser"
+	"mudbot/telnet"
 	"net"
 	"sync"
 	"time"
@@ -28,9 +29,8 @@ const (
 	STATE_START copierState = iota
 	STATE_TELNET_IAC
 	STATE_TELNET_SB
-	STATE_TELNET_MCCPV2          // SE option was MCCPv2
-	STATE_TELNET_MCCPV2_IAC      // IAC after IAC SE MCCPv2
-	STATE_TELNET_COMMAND_WITH_OP // Other unimportant commands with op
+	STATE_TELNET_MCCPV2     // SE option was MCCPv2
+	STATE_TELNET_MCCPV2_IAC // IAC after IAC SE MCCPv2
 )
 
 type Copier struct {
@@ -38,7 +38,7 @@ type Copier struct {
 
 	state copierState
 
-	parser *parser.Parser
+	bot *bot.Bot
 
 	accumulationPolicy accumulationPolicy
 
@@ -57,10 +57,10 @@ type Copier struct {
 	zlibReader      io.ReadCloser
 }
 
-func NewCopier(accumulate accumulationPolicy, parser *parser.Parser, logger *zap.SugaredLogger) *Copier {
+func NewCopier(accumulate accumulationPolicy, bot *bot.Bot, logger *zap.SugaredLogger) *Copier {
 	c := Copier{}
 	c.logger = logger
-	c.parser = parser
+	c.bot = bot
 	c.accumulationPolicy = accumulate
 	c.zlibInBuffer = new(bytes.Buffer)
 	c.zlibOutBuffer = make([]byte, bufSize*5)
@@ -117,42 +117,50 @@ func (c *Copier) copy(dst net.Conn, src net.Conn, workerDone chan struct{}) {
 			switch c.state {
 			case STATE_START:
 				switch b {
-				case TELNET_IAC:
+				case telnet.IAC:
 					c.state = STATE_TELNET_IAC
 				}
 			case STATE_TELNET_IAC:
 				switch b {
-				case TELNET_CMD_GO_AHEAD:
+				case telnet.COMMAND_GO_AHEAD:
 					if c.accumulationPolicy == ACCUMULATION_POLICY_DO {
-						appendBytes := c.readBytes[afterFlushIdx : c.idx+1-len(gaSequence)]
+						appendBytes := c.readBytes[afterFlushIdx : c.idx+1-len(telnet.GaSequence)]
 						c.accumulator = append(c.accumulator, appendBytes...)
 						c.flushAccumulator()
 						afterFlushIdx = c.idx + 1
 					}
 					c.state = STATE_START
 
-				case TELNET_CMD_SB:
+				case telnet.COMMAND_SB:
 					c.state = STATE_TELNET_SB
+				default:
+					c.state = STATE_START
 				}
 			case STATE_TELNET_SB:
 				switch b {
-				case TELNET_OPT_MCCPV2:
+				case telnet.OPTION_MCCPV2:
 					c.state = STATE_TELNET_MCCPV2
+				default:
+					c.state = STATE_START
 				}
 			case STATE_TELNET_MCCPV2:
 				switch b {
-				case TELNET_IAC:
+				case telnet.IAC:
 					c.state = STATE_TELNET_MCCPV2_IAC
+				default:
+					c.state = STATE_START
 				}
 			case STATE_TELNET_MCCPV2_IAC:
 				switch b {
-				case TELNET_CMD_SE:
+				case telnet.COMMAND_SE:
 					c.compressedBytes = c.readBytes[c.idx+1:]
 					// Cut out compression start sequence
 					// since we are always sending decompressed stream to client
-					c.readBytes = c.readBytes[:c.idx+1-len(compressionStartSequence)]
+					c.readBytes = c.readBytes[:c.idx+1-len(telnet.CompressionStartSequence)]
 					c.compressed = true
 					c.idx = len(c.readBytes)
+					c.state = STATE_START
+				default:
 					c.state = STATE_START
 				}
 			}
@@ -161,9 +169,9 @@ func (c *Copier) copy(dst net.Conn, src net.Conn, workerDone chan struct{}) {
 		}
 
 		c.logger.Debugf("Data str:\n%v", string(c.readBytes))
-		c.logger.Debugf("Data hex:\n%v", botutil.PrintHex(c.readBytes))
+		c.logger.Debugf("Data hex:\n%v", botutil.ByteToHex(c.readBytes))
 
-		telnetCmds := GetTelnetCommandsStrings(c.readBytes)
+		telnetCmds := telnet.GetCommandsStrings(c.readBytes)
 		if len(telnetCmds) > 0 {
 			c.logger.Debugf("Telnet commands: %v", telnetCmds)
 		}
@@ -247,8 +255,8 @@ func (c *Copier) writeToConn(buf []byte, conn net.Conn) {
 
 func (c *Copier) flushAccumulator() {
 	c.logger.Debugf("Flushing accumulator content:%v", string(c.accumulator))
-	c.logger.Debugf("Flushing accumulator hex:%v", botutil.PrintHex(c.accumulator))
-	c.parser.Parse(c.accumulator)
+	c.logger.Debugf("Flushing accumulator hex:%v", botutil.ByteToHex(c.accumulator))
+	c.bot.Parse(c.accumulator)
 	c.accumulator = []byte{}
 }
 

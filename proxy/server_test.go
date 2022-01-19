@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"compress/zlib"
 	"fmt"
-	"log"
 	"mudbot/botutil"
+	"mudbot/telnet"
 	"net"
 	"strings"
 	"sync"
@@ -15,6 +15,7 @@ import (
 
 var tearedDown bool
 var mudListener net.Listener
+var logger = botutil.NewLogger("test")
 
 func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
 	tearedDown = false
@@ -26,33 +27,33 @@ func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
 	mudWg := new(sync.WaitGroup)
 	mudWg.Add(1)
 
-	fmt.Printf("Running mud listen\n")
+	logger.Infof("Running mud listen")
 	var listenErr error
 	mudListener, listenErr = net.Listen("tcp", mudAddr)
 	if listenErr != nil {
-		log.Fatalf("listenErr=%v\n", listenErr)
+		logger.Fatalf("listenErr=%v", listenErr)
 	}
 
 	go func() {
 		var acceptErr error
 		mudConn, acceptErr = mudListener.Accept()
 		if acceptErr != nil && !tearedDown {
-			log.Fatalf("acceptErr=%v\n", acceptErr)
+			logger.Fatalf("acceptErr=%v", acceptErr)
 		}
-		fmt.Printf("Mud accepted connection\n")
+		logger.Infof("Mud accepted connection")
 		mudWg.Done()
 	}()
 
-	server = NewServer()
-	go server.Start(proxyAddr, mudAddr)
+	server = NewServer(proxyAddr, mudAddr)
+	go server.Start()
 
-	fmt.Printf("Connecting to proxy\n")
+	logger.Infof("Connecting to proxy")
 	clientConn, err := net.Dial("tcp", proxyAddr)
 	if clientConn == nil {
-		log.Fatalf("proxy dial failed: %v\n", err)
+		logger.Fatalf("proxy dial failed: %v", err)
 	}
 
-	fmt.Printf("Waiting for Mud to accept\n")
+	logger.Infof("Waiting for Mud to accept")
 	mudWg.Wait()
 
 	return
@@ -61,13 +62,13 @@ func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
 func tearDown(clientConn net.Conn, mudConn net.Conn, s *server) {
 	tearedDown = true
 
-	fmt.Printf("%s stopping server\n", time.Now())
+	logger.Infof("%s stopping server", time.Now())
 	s.Stop(true)
-	fmt.Printf("closing client\n")
+	logger.Infof("closing client")
 	clientConn.Close()
-	fmt.Printf("closing mud\n")
+	logger.Infof("closing mud")
 	mudConn.Close()
-	fmt.Printf("closing mud listener\n")
+	logger.Infof("closing mud listener")
 	mudListener.Close()
 }
 
@@ -170,7 +171,7 @@ func TestAccumulatorFlush(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	mudConn.Write([]byte("A "))
 	time.Sleep(10 * time.Millisecond)
-	mudConn.Write(append([]byte("STRING "), []byte{TELNET_IAC, TELNET_CMD_GO_AHEAD}...))
+	mudConn.Write(append([]byte("STRING "), telnet.GaSequence...))
 
 	// expect fully flushed string
 
@@ -178,9 +179,9 @@ func TestAccumulatorFlush(t *testing.T) {
 
 	mudConn.Write(botutil.Multiappend(
 		[]byte("STRING1 "),
-		[]byte{TELNET_IAC, TELNET_CMD_GO_AHEAD},
+		telnet.GaSequence,
 		[]byte("STRING2 "),
-		[]byte{TELNET_IAC, TELNET_CMD_GO_AHEAD},
+		telnet.GaSequence,
 	))
 
 	// expect two separate flushes
@@ -205,7 +206,7 @@ func TestCompressed(t *testing.T) {
 	strInToCompress := "Yohohoho"
 
 	compressedBytes := compressStr(zlibWriter, strInToCompress, compressedBuffer, t)
-	in := append([]byte(strInUncompressed), compressionStartSequence...)
+	in := append([]byte(strInUncompressed), telnet.CompressionStartSequence...)
 	in = append(in, compressedBytes...)
 	mudConn.Write(in)
 
@@ -232,7 +233,7 @@ func TestCompressedMany(t *testing.T) {
 	strIn := "start"
 
 	compressedBytes := compressStr(zlibWriter, strIn, compressedBuffer, t)
-	mudConn.Write(append(compressionStartSequence, compressedBytes...))
+	mudConn.Write(append(telnet.CompressionStartSequence, compressedBytes...))
 
 	strOut := readFromConnUntilTimeout(clientConn, t)
 	checkSentRcvdDiffers(strIn, strOut, t)
@@ -245,9 +246,9 @@ func TestCompressedMany(t *testing.T) {
 		compressedBytes2 := compressStr(zlibWriter, strIn, compressedBuffer, t)
 		n, mudWriteErr := mudConn.Write(compressedBytes2)
 		if mudWriteErr != nil {
-			fmt.Printf("mudWriteErr=%v\n", mudWriteErr)
+			logger.Infof("mudWriteErr=%v", mudWriteErr)
 		}
-		fmt.Printf("Wrote \"%s\" (n=%v) to mudConn\n", strIn, n)
+		logger.Infof("Wrote \"%s\" (n=%v) to mudConn", strIn, n)
 	}
 
 	strOut2 := readFromConnUntilTimeout(clientConn, t)

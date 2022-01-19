@@ -1,4 +1,4 @@
-package char
+package bot
 
 import (
 	"os"
@@ -10,6 +10,7 @@ import (
 func init() {
 	os.Setenv("LOG_LEVEL", "DEBUG")
 }
+
 func TestParseScore1(t *testing.T) {
 	s := `Вы мужчина Венге, наемник 1 уровня. Вам 19 лет.
 У Вас сейчас 36 из 40 очков жизни и 98 из 100 очков бодрости.
@@ -21,7 +22,7 @@ func TestParseScore1(t *testing.T) {
 Вы отдыхаете.
 Вы хотите есть.`
 
-	ref := Stats{
+	ref := Char{
 		Name:             "Венге",
 		Age:              19,
 		Level:            1,
@@ -41,13 +42,13 @@ func TestParseScore1(t *testing.T) {
 		Class:            CLASS_MERCENARY,
 	}
 
-	c := NewChar()
-	c.ParseScore(s)
+	b := NewBot()
+	b.ParseScore(s)
 
-	assert.Equal(t, ref, c.Stats)
+	assert.Equal(t, ref, b.char)
 }
 
 func TestParseScoreBadInput(t *testing.T) {
-	c := NewChar()
-	assert.False(t, c.ParseScore("zxczxczcaqd"))
+	b := NewBot()
+	assert.False(t, b.ParseScore("zxczxczcaqd"))
 }

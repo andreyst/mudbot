@@ -1,0 +1,30 @@
+package bot
+
+import (
+	"mudbot/botutil"
+	"strings"
+
+	"go.uber.org/zap"
+)
+
+type Bot struct {
+	logger *zap.SugaredLogger
+
+	char  Char
+	fight Fight
+}
+
+func NewBot() *Bot {
+	bot := Bot{
+		logger: botutil.NewLogger("bot"),
+	}
+
+	return &bot
+}
+
+func (b *Bot) Parse(chunk []byte) {
+	s := strings.ReplaceAll(string(chunk), "\r\n", "\n")
+
+	b.ParseScore(s)
+	b.ParsePrompt(s)
+}

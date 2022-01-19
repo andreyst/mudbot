@@ -2,16 +2,17 @@ package proxy
 
 import (
 	"fmt"
-	"log"
+	"mudbot/bot"
 	"mudbot/botutil"
-	"mudbot/parser"
 	"net"
 	"sync"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 type Worker struct {
-	name string
+	bot *bot.Bot
 
 	clientConn net.Conn
 	mudConn    net.Conn
@@ -25,27 +26,53 @@ type Worker struct {
 
 	mu sync.Mutex
 	wg sync.WaitGroup
+
+	logger *zap.SugaredLogger
 }
 
-func (worker *Worker) Run(name string, clientConn net.Conn, mudConn net.Conn) {
-	worker.wg.Add(1)
-	worker.done = make(chan struct{})
-	worker.name = name
+func NewWorker(clientConn net.Conn, mudConn net.Conn) *Worker {
+	bot := bot.NewBot()
 
-	worker.clientToMudCopier = NewCopier(ACCUMULATION_POLICY_DONT, nil, botutil.NewLogger("cp_client"))
-	worker.mudToClientCopier = NewCopier(ACCUMULATION_POLICY_DO, parser.NewParser(), botutil.NewLogger("cp_mud"))
+	w := Worker{
+		bot: bot,
 
-	worker.clientConn = clientConn
-	worker.mudConn = mudConn
+		logger: botutil.NewLogger("worker"),
 
-	log.Printf("== Starting worker %s\n", worker.name)
+		done: make(chan struct{}),
 
-	go worker.clientToMudCopier.Run(mudConn, clientConn, worker.done)
-	go worker.mudToClientCopier.Run(clientConn, mudConn, worker.done)
+		clientToMudCopier: NewCopier(ACCUMULATION_POLICY_DONT, nil, botutil.NewLogger("cp_client")),
+		mudToClientCopier: NewCopier(ACCUMULATION_POLICY_DO, bot, botutil.NewLogger("cp_mud")),
 
-	worker.waitForCopierClose()
-	log.Printf("One of the copiers stopped, stopping worker\n")
-	worker.stop()
+		clientConn: clientConn,
+		mudConn:    mudConn,
+	}
+
+	return &w
+}
+
+func (w *Worker) Run() {
+	w.logger.Info("Starting worker")
+
+	w.wg.Add(1)
+
+	go func() {
+		for {
+			select {
+			case <-w.done:
+				return
+			default:
+			}
+			fmt.Printf("Bot: %+v\n", w.bot)
+			time.Sleep(time.Duration(2) * time.Second)
+		}
+	}()
+
+	go w.clientToMudCopier.Run(w.mudConn, w.clientConn, w.done)
+	go w.mudToClientCopier.Run(w.clientConn, w.mudConn, w.done)
+
+	w.waitForCopierClose()
+	w.logger.Info("One of the copiers stopped, stopping worker")
+	w.stop()
 }
 
 func (worker *Worker) waitForCopierClose() {
@@ -57,34 +84,29 @@ func (worker *Worker) waitForCopierClose() {
 		}
 	}
 }
-func (worker *Worker) stop() {
+func (w *Worker) stop() {
 	{
-		worker.mu.Lock()
-		if worker.stopping {
+		w.mu.Lock()
+		if w.stopping {
 			return
 		}
 
-		worker.stopping = true
-		fmt.Printf("%s worker stopping\n", time.Now())
-		worker.mu.Unlock()
+		w.stopping = true
+		w.mu.Unlock()
 	}
 
-	fmt.Printf("%s closing done channel\n", time.Now())
-	close(worker.done)
+	close(w.done)
 
-	fmt.Printf("%s waiting for clienToMudCopier done\n", time.Now())
-	<-worker.clientToMudCopier.done
-	fmt.Printf("%s waiting for mudToClientCopier done\n", time.Now())
-	<-worker.mudToClientCopier.done
+	<-w.clientToMudCopier.done
+	<-w.mudToClientCopier.done
 
-	fmt.Printf("%s waiting on wait groups\n", time.Now())
-	worker.clientToMudCopier.wg.Wait()
-	worker.mudToClientCopier.wg.Wait()
+	w.clientToMudCopier.wg.Wait()
+	w.mudToClientCopier.wg.Wait()
 
-	worker.clientConn.Close()
-	worker.mudConn.Close()
+	w.clientConn.Close()
+	w.mudConn.Close()
 
-	worker.wg.Done()
+	w.wg.Done()
 }
 
 // func (worker *Worker) sendToClient(buf []byte, logger *log.Logger) {

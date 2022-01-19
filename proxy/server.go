@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"mudbot/bot"
 	"mudbot/botutil"
 	"net"
 	"sync"
@@ -9,31 +10,36 @@ import (
 )
 
 type server struct {
-	logger *zap.SugaredLogger
+	localAddr  string
+	remoteAddr string
+	bot        *bot.Bot
 
 	listener net.Listener
 	stopped  bool
-
-	workers []*Worker
+	workers  []*Worker
 
 	wg sync.WaitGroup
+
+	logger *zap.SugaredLogger
 }
 
-func NewServer() *server {
-	s := &server{}
+func NewServer(localAddr string, remoteAddr string) *server {
+	s := &server{
+		localAddr:  localAddr,
+		remoteAddr: remoteAddr,
+	}
 	s.logger = botutil.NewLogger("server")
 
 	return s
 }
 
-func (s *server) Start(localAddr string, remoteAddr string) {
+func (s *server) Start() {
+	s.logger.Infof("Starting proxy with %v->%v", s.localAddr, s.remoteAddr)
+
 	s.wg.Add(1)
 
-	s.logger.Infof("Starting proxy with %v->%v", localAddr, remoteAddr)
-	s.logger.Debugf("Starting proxy with %v->%v", localAddr, remoteAddr)
-
 	var listenErr error
-	s.listener, listenErr = net.Listen("tcp", localAddr)
+	s.listener, listenErr = net.Listen("tcp", s.localAddr)
 	if listenErr != nil {
 		s.logger.Fatalf("cannot listen, exiting: %v", listenErr)
 	}
@@ -46,7 +52,7 @@ func (s *server) Start(localAddr string, remoteAddr string) {
 			}
 			s.logger.Fatalf("accept failed: %v", acceptErr)
 		}
-		go s.startWorker(conn, remoteAddr)
+		go s.startWorker(conn, s.remoteAddr)
 	}
 
 	// Here and not in stop() to prevent race
@@ -78,7 +84,7 @@ func (s *server) startWorker(local net.Conn, remoteAddr string) {
 		return
 	}
 
-	worker := &Worker{}
+	worker := NewWorker(local, remote)
 	s.workers = append(s.workers, worker)
-	go worker.Run("", local, remote)
+	go worker.Run()
 }
