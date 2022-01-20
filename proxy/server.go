@@ -89,3 +89,14 @@ func (s *Server) startWorker(local net.Conn, remoteAddr string) {
 	s.workers = append(s.workers, worker)
 	go worker.Run()
 }
+
+func (s *Server) SendToMud(str string, echo bool) {
+	s.workers[0].sendToMud([]byte(str))
+	if echo {
+		s.workers[0].sendToClient([]byte("%bot: " + str + "\n"))
+	}
+}
+
+func (s *Server) SendToClient(str string) {
+	s.workers[0].sendToClient([]byte(str))
+}

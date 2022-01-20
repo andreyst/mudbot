@@ -2,6 +2,8 @@
 
 package bot
 
+import "fmt"
+
 type Gender int
 
 const (
@@ -53,7 +55,18 @@ const (
 	POSITION_SLEEPING
 )
 
+type Credentials struct {
+	Login    string
+	Password string
+}
+
+func (c Credentials) String() string {
+	return fmt.Sprintf("{Login: %s, Password: ***}", c.Login)
+}
+
 type Char struct {
+	Initialized bool
+
 	Name   string
 	Age    int
 	Gender Gender

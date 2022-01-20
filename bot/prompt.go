@@ -23,15 +23,15 @@ func (b *Bot) ParsePrompt(s string) bool {
 	}
 
 	// TODO: Add proper error handling
-	b.char.Health, _ = strconv.Atoi(promptMatch["Health"])
-	b.char.Stamina, _ = strconv.Atoi(promptMatch["Stamina"])
-	b.char.ExperienceTNL, _ = strconv.Atoi(promptMatch["ExperienceTNL"])
-	b.char.Money, _ = strconv.Atoi(promptMatch["Money"])
+	b.Char.Health, _ = strconv.Atoi(promptMatch["Health"])
+	b.Char.Stamina, _ = strconv.Atoi(promptMatch["Stamina"])
+	b.Char.ExperienceTNL, _ = strconv.Atoi(promptMatch["ExperienceTNL"])
+	b.Char.Money, _ = strconv.Atoi(promptMatch["Money"])
 
 	b.ParseFight(s)
 
-	b.logger.Debugf("char after ParsePrompt: %+v", b.char)
-	b.logger.Debugf("fight after ParsePrompt: %+v", b.fight)
+	b.logger.Debugf("char after ParsePrompt: %+v", b.Char)
+	b.logger.Debugf("fight after ParsePrompt: %+v", b.Fight)
 
 	return false
 }

@@ -25,20 +25,20 @@ func TestParsePrompt(t *testing.T) {
 		},
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParsePrompt(s)
 
-	assert.Equal(t, refChar, b.char)
-	assert.Equal(t, refFight, b.fight)
+	assert.Equal(t, refChar, b.Char)
+	assert.Equal(t, refFight, b.Fight)
 }
 
 func TestParsePromptIgnoresAnsi(t *testing.T) {
 	s := "\x1b[0;32m36ж\x1b[0;0m \x1b[0;32m100б\x1b[0;0m 2952о 30м Выходы:Ю>"
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParsePrompt(s)
 
-	assert.Equal(t, 36, b.char.Health)
+	assert.Equal(t, 36, b.Char.Health)
 }
 
 func TestParsePromptParsesOnlyLastLine(t *testing.T) {
@@ -46,9 +46,9 @@ func TestParsePromptParsesOnlyLastLine(t *testing.T) {
 
 	refFight := Fight{}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParsePrompt(s)
 
-	assert.Equal(t, 36, b.char.Health)
-	assert.Equal(t, refFight, b.fight)
+	assert.Equal(t, 36, b.Char.Health)
+	assert.Equal(t, refFight, b.Fight)
 }

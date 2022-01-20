@@ -15,7 +15,7 @@ func TestParseCombatant1(t *testing.T) {
 		Position:  POSITION_STANDING,
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	c := b.ParseCombatant(s)
 
 	assert.Equal(t, ref, c)
@@ -30,7 +30,7 @@ func TestParseCombatant2(t *testing.T) {
 		Position:  POSITION_LYING,
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	c := b.ParseCombatant(s)
 
 	assert.Equal(t, ref, c)
@@ -45,7 +45,7 @@ func TestParseCombatant3(t *testing.T) {
 		Position:  POSITION_LYING,
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	c := b.ParseCombatant(s)
 
 	assert.Equal(t, ref, c)
@@ -56,10 +56,10 @@ func TestFight1(t *testing.T) {
 
 	ref := Fight{}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParseFight(s)
 
-	assert.Equal(t, ref, b.fight)
+	assert.Equal(t, ref, b.Fight)
 }
 
 func TestFight2(t *testing.T) {
@@ -74,10 +74,10 @@ func TestFight2(t *testing.T) {
 		},
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParseFight(s)
 
-	assert.Equal(t, ref, b.fight)
+	assert.Equal(t, ref, b.Fight)
 }
 
 func TestFight3(t *testing.T) {
@@ -92,11 +92,11 @@ func TestFight3(t *testing.T) {
 		},
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParseFight(s)
 
-	assert.Equal(t, POSITION_LYING, b.char.Position)
-	assert.Equal(t, ref, b.fight)
+	assert.Equal(t, POSITION_LYING, b.Char.Position)
+	assert.Equal(t, ref, b.Fight)
 }
 
 func TestFight4(t *testing.T) {
@@ -117,8 +117,8 @@ func TestFight4(t *testing.T) {
 		},
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParseFight(s)
 
-	assert.Equal(t, ref, b.fight)
+	assert.Equal(t, ref, b.Fight)
 }

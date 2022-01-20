@@ -10,8 +10,8 @@ var combatantRe = regexp.MustCompile(`\[([^\]]+)\]`)
 func (b *Bot) ParseFight(s string) {
 	combatantMatch := combatantRe.FindAllStringSubmatch(s, -1)
 
-	b.fight.IsActive = len(combatantMatch) > 0
-	b.fight.HaveTank = len(combatantMatch) > 2
+	b.Fight.IsActive = len(combatantMatch) > 0
+	b.Fight.HaveTank = len(combatantMatch) > 2
 
 	for combatantNum, combatantStr := range combatantMatch {
 		combatant := b.ParseCombatant(combatantStr[1])
@@ -19,18 +19,18 @@ func (b *Bot) ParseFight(s string) {
 		switch combatantNum {
 		case 0:
 			if len(combatantMatch) == 1 {
-				b.fight.Enemy = combatant
+				b.Fight.Enemy = combatant
 			} else {
-				b.char.Position = combatant.Position
+				b.Char.Position = combatant.Position
 			}
 		case 1:
 			if len(combatantMatch) == 2 {
-				b.fight.Enemy = combatant
+				b.Fight.Enemy = combatant
 			} else {
-				b.fight.Tank = combatant
+				b.Fight.Tank = combatant
 			}
 		case 2:
-			b.fight.Enemy = combatant
+			b.Fight.Enemy = combatant
 		default:
 			// TODO: Warn client
 			b.logger.Warnf("Unknown combatantNum: %v", combatantNum)

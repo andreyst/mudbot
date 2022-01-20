@@ -260,6 +260,6 @@ func (c *Copier) writeToConn(buf []byte, conn net.Conn) {
 func (c *Copier) flushAccumulator() {
 	c.logger.Debugf("Flushing accumulator content:%v", string(c.accumulator))
 	c.logger.Debugf("Flushing accumulator hex:%v", botutil.ByteToHex(c.accumulator))
-	c.parseAccumulatorCallback(c.accumulator)
+	c.parseAccumulatorCallback(telnet.StripTelnet(c.accumulator))
 	c.accumulator = []byte{}
 }

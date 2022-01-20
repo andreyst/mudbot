@@ -88,10 +88,18 @@ func (w *Worker) stop() {
 	w.wg.Done()
 }
 
-// func (worker *Worker) sendToClient(buf []byte, logger *log.Logger) {
-// 	worker.sendToConn(buf, worker.clientConn, logger)
-// }
+func (w *Worker) sendToClient(buf []byte) {
+	w.writeToConn(buf, w.clientConn)
+}
 
-// func (worker *Worker) sendToMud(buf []byte, logger *log.Logger) {
-// 	worker.sendToConn(buf, worker.mudConn, logger)
-// }
+func (w *Worker) sendToMud(buf []byte) {
+	w.writeToConn(buf, w.mudConn)
+}
+
+func (w *Worker) writeToConn(buf []byte, conn net.Conn) {
+	n, writeErr := conn.Write(buf)
+	if writeErr != nil {
+		w.logger.Fatalf("Error while writing to conn: %v", writeErr)
+	}
+	w.logger.Debugf("Wrote string of len %v to conn", n)
+}

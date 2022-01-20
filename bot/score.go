@@ -23,36 +23,38 @@ func (b *Bot) ParseScore(s string) bool {
 		return false
 	}
 
-	b.char.Name = match["Name"]
+	b.Char.Initialized = true
+
+	b.Char.Name = match["Name"]
 
 	// TODO: handle conv errors
-	b.char.Age, _ = strconv.Atoi(match["Age"])
-	b.char.Level, _ = strconv.Atoi(match["Level"])
-	b.char.Experience, _ = strconv.Atoi(match["Experience"])
-	b.char.ExperienceTNL, _ = strconv.Atoi(match["ExperienceTNL"])
-	b.char.Health, _ = strconv.Atoi(match["Health"])
-	b.char.MaxHealth, _ = strconv.Atoi(match["MaxHealth"])
-	b.char.Stamina, _ = strconv.Atoi(match["Stamina"])
-	b.char.MaxStamina, _ = strconv.Atoi(match["MaxStamina"])
-	b.char.Money, _ = strconv.Atoi(match["Money"])
+	b.Char.Age, _ = strconv.Atoi(match["Age"])
+	b.Char.Level, _ = strconv.Atoi(match["Level"])
+	b.Char.Experience, _ = strconv.Atoi(match["Experience"])
+	b.Char.ExperienceTNL, _ = strconv.Atoi(match["ExperienceTNL"])
+	b.Char.Health, _ = strconv.Atoi(match["Health"])
+	b.Char.MaxHealth, _ = strconv.Atoi(match["MaxHealth"])
+	b.Char.Stamina, _ = strconv.Atoi(match["Stamina"])
+	b.Char.MaxStamina, _ = strconv.Atoi(match["MaxStamina"])
+	b.Char.Money, _ = strconv.Atoi(match["Money"])
 
 	switch match["Class"] {
 	case "наемник":
-		b.char.Class = CLASS_MERCENARY
+		b.Char.Class = CLASS_MERCENARY
 	case "следопыт":
-		b.char.Class = CLASS_RANGER
+		b.Char.Class = CLASS_RANGER
 	case "соламнийский рыцарь":
-		b.char.Class = CLASS_KNIGHT_OF_SOLAMNIA
+		b.Char.Class = CLASS_KNIGHT_OF_SOLAMNIA
 	case "вор":
-		b.char.Class = CLASS_THIEF
+		b.Char.Class = CLASS_THIEF
 	case "ассасин":
-		b.char.Class = CLASS_ASSASSIN
+		b.Char.Class = CLASS_ASSASSIN
 	case "жрец Мишакаль":
-		b.char.Class = CLASS_PRIEST_OF_MISHAKAL
+		b.Char.Class = CLASS_PRIEST_OF_MISHAKAL
 	case "жрец Моргиона":
-		b.char.Class = CLASS_PRIEST_OF_MORGION
+		b.Char.Class = CLASS_PRIEST_OF_MORGION
 	case "маг":
-		b.char.Class = CLASS_MAGE
+		b.Char.Class = CLASS_MAGE
 	default:
 		b.logger.Warnf("Unknown class %+v", match["Class"])
 		// TODO: Show to client warning about unknown class & log it
@@ -60,9 +62,9 @@ func (b *Bot) ParseScore(s string) bool {
 
 	switch match["Gender"] {
 	case "мужчина":
-		b.char.Gender = GENDER_MALE
+		b.Char.Gender = GENDER_MALE
 	case "женщина":
-		b.char.Gender = GENDER_FEMALE
+		b.Char.Gender = GENDER_FEMALE
 	default:
 		b.logger.Warnf("Unknown gender %+v", match["Gender"])
 		// TODO: Show to client warning about unknown gender & log it
@@ -70,29 +72,29 @@ func (b *Bot) ParseScore(s string) bool {
 
 	switch match["Position"] {
 	case "стоите":
-		b.char.Position = POSITION_STANDING
+		b.Char.Position = POSITION_STANDING
 	case "отдыхаете":
-		b.char.Position = POSITION_RESTING
+		b.Char.Position = POSITION_RESTING
 	case "сидите":
-		b.char.Position = POSITION_SITTING
+		b.Char.Position = POSITION_SITTING
 	case "спите":
-		b.char.Position = POSITION_SLEEPING
+		b.Char.Position = POSITION_SLEEPING
 	default:
 		b.logger.Warnf("Unknown position %+v", match["Position"])
 		// TODO: Show to client warning about unknown position & log it
 	}
 
 	if strings.Contains(s, "Ваша душа чиста, и Ваша вера в идеалы Добра непоколебима.") {
-		b.char.EthicalAlignment = ETHICAL_ALIGNMENT_GOOD
+		b.Char.EthicalAlignment = ETHICAL_ALIGNMENT_GOOD
 	}
 	if strings.Contains(s, "Вы привержены идеалам Добра.") {
-		b.char.MoralAlignment = MORAL_ALIGNMENT_GOOD
+		b.Char.MoralAlignment = MORAL_ALIGNMENT_GOOD
 	}
 
-	b.char.IsHungry = strings.Contains(s, "Вы хотите есть.")
-	b.char.IsThirsty = strings.Contains(s, "Вы хотите пить.")
+	b.Char.IsHungry = strings.Contains(s, "Вы хотите есть.")
+	b.Char.IsThirsty = strings.Contains(s, "Вы хотите пить.")
 
-	b.logger.Debugf("Char after score parse:\n%+v", b.char)
+	b.logger.Debugf("Char after score parse:\n%+v", b.Char)
 
 	return true
 }

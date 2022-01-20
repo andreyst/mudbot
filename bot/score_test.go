@@ -42,13 +42,13 @@ func TestParseScore1(t *testing.T) {
 		Class:            CLASS_MERCENARY,
 	}
 
-	b := NewBot()
+	b := NewBot(Credentials{})
 	b.ParseScore(s)
 
-	assert.Equal(t, ref, b.char)
+	assert.Equal(t, ref, b.Char)
 }
 
 func TestParseScoreBadInput(t *testing.T) {
-	b := NewBot()
+	b := NewBot(Credentials{})
 	assert.False(t, b.ParseScore("zxczxczcaqd"))
 }
