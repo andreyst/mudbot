@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"mudbot/proxy"
+	"mudbot/app"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -20,8 +20,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	s := proxy.NewServer(os.Args[1], os.Args[2])
-	s.Start()
+	app := app.NewApp(os.Args[1], os.Args[2])
+	app.Start()
 
 	os.Exit(0)
 }

@@ -1,10 +1,11 @@
+//go:generate stringer -type=accumulationPolicy,copierState -output copier_string.go
+
 package proxy
 
 import (
 	"bytes"
 	"compress/zlib"
 	"io"
-	"mudbot/bot"
 	"mudbot/botutil"
 	"mudbot/telnet"
 	"net"
@@ -15,6 +16,8 @@ import (
 )
 
 const bufSize = 65536
+
+type AccumulatorCallback func([]byte)
 
 type accumulationPolicy int
 
@@ -34,16 +37,11 @@ const (
 )
 
 type Copier struct {
-	logger *zap.SugaredLogger
+	parseAccumulatorCallback AccumulatorCallback
 
 	state copierState
 
-	bot *bot.Bot
-
 	accumulationPolicy accumulationPolicy
-
-	done chan struct{}
-	wg   sync.WaitGroup
 
 	buf         []byte
 	readBytes   []byte
@@ -55,16 +53,22 @@ type Copier struct {
 	zlibInBuffer    *bytes.Buffer
 	zlibOutBuffer   []byte
 	zlibReader      io.ReadCloser
+
+	done chan struct{}
+	wg   sync.WaitGroup
+
+	logger *zap.SugaredLogger
 }
 
-func NewCopier(accumulate accumulationPolicy, bot *bot.Bot, logger *zap.SugaredLogger) *Copier {
-	c := Copier{}
-	c.logger = logger
-	c.bot = bot
-	c.accumulationPolicy = accumulate
-	c.zlibInBuffer = new(bytes.Buffer)
-	c.zlibOutBuffer = make([]byte, bufSize*5)
-	c.done = make(chan struct{})
+func NewCopier(accumulate accumulationPolicy, parseAccumulatorCallback AccumulatorCallback, logger *zap.SugaredLogger) *Copier {
+	c := Copier{
+		parseAccumulatorCallback: parseAccumulatorCallback,
+		accumulationPolicy:       accumulate,
+		zlibInBuffer:             new(bytes.Buffer),
+		zlibOutBuffer:            make([]byte, bufSize*5),
+		done:                     make(chan struct{}),
+		logger:                   logger,
+	}
 	c.wg.Add(1)
 
 	return &c
@@ -256,8 +260,6 @@ func (c *Copier) writeToConn(buf []byte, conn net.Conn) {
 func (c *Copier) flushAccumulator() {
 	c.logger.Debugf("Flushing accumulator content:%v", string(c.accumulator))
 	c.logger.Debugf("Flushing accumulator hex:%v", botutil.ByteToHex(c.accumulator))
-	c.bot.Parse(c.accumulator)
+	c.parseAccumulatorCallback(c.accumulator)
 	c.accumulator = []byte{}
 }
-
-//go:generate stringer -type=accumulationPolicy,copierState -output copier_string.go

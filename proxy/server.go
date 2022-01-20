@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"mudbot/bot"
 	"mudbot/botutil"
 	"net"
 	"sync"
@@ -9,31 +8,33 @@ import (
 	"go.uber.org/zap"
 )
 
-type server struct {
+type Server struct {
 	localAddr  string
 	remoteAddr string
-	bot        *bot.Bot
 
 	listener net.Listener
 	stopped  bool
 	workers  []*Worker
+
+	botParseCallback AccumulatorCallback
 
 	wg sync.WaitGroup
 
 	logger *zap.SugaredLogger
 }
 
-func NewServer(localAddr string, remoteAddr string) *server {
-	s := &server{
-		localAddr:  localAddr,
-		remoteAddr: remoteAddr,
+func NewServer(localAddr string, remoteAddr string, botParseCallback AccumulatorCallback) *Server {
+	s := &Server{
+		localAddr:        localAddr,
+		remoteAddr:       remoteAddr,
+		botParseCallback: botParseCallback,
 	}
 	s.logger = botutil.NewLogger("server")
 
 	return s
 }
 
-func (s *server) Start() {
+func (s *Server) Start() {
 	s.logger.Infof("Starting proxy with %v->%v", s.localAddr, s.remoteAddr)
 
 	s.wg.Add(1)
@@ -67,7 +68,7 @@ func (s *server) Start() {
 	s.wg.Done()
 }
 
-func (s *server) Stop(wait bool) {
+func (s *Server) Stop(wait bool) {
 	s.logger.Infof("shutting down server")
 	s.stopped = true
 	s.listener.Close()
@@ -77,14 +78,14 @@ func (s *server) Stop(wait bool) {
 	}
 }
 
-func (s *server) startWorker(local net.Conn, remoteAddr string) {
+func (s *Server) startWorker(local net.Conn, remoteAddr string) {
 	remote, err := net.Dial("tcp", remoteAddr)
 	if remote == nil {
 		s.logger.Errorf("remote dial failed: %v", err)
 		return
 	}
 
-	worker := NewWorker(local, remote)
+	worker := NewWorker(local, remote, s.botParseCallback)
 	s.workers = append(s.workers, worker)
 	go worker.Run()
 }

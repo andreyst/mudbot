@@ -17,7 +17,7 @@ var tearedDown bool
 var mudListener net.Listener
 var logger = botutil.NewLogger("test")
 
-func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
+func tearUp() (clientConn net.Conn, mudConn net.Conn, server *Server) {
 	tearedDown = false
 
 	// TODO: Run tests with random ports
@@ -44,7 +44,7 @@ func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
 		mudWg.Done()
 	}()
 
-	server = NewServer(proxyAddr, mudAddr)
+	server = NewServer(proxyAddr, mudAddr, func([]byte) {})
 	go server.Start()
 
 	logger.Infof("Connecting to proxy")
@@ -59,7 +59,7 @@ func tearUp() (clientConn net.Conn, mudConn net.Conn, server *server) {
 	return
 }
 
-func tearDown(clientConn net.Conn, mudConn net.Conn, s *server) {
+func tearDown(clientConn net.Conn, mudConn net.Conn, s *Server) {
 	tearedDown = true
 
 	logger.Infof("%s stopping server", time.Now())
@@ -173,7 +173,7 @@ func TestAccumulatorFlush(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 	mudConn.Write(append([]byte("STRING "), telnet.GaSequence...))
 
-	// expect fully flushed string
+	// TODO: expect fully flushed string
 
 	readFromConnUntilTimeout(clientConn, t)
 
@@ -184,13 +184,13 @@ func TestAccumulatorFlush(t *testing.T) {
 		telnet.GaSequence,
 	))
 
-	// expect two separate flushes
+	// TODO: expect two separate flushes
 
 	readFromConnUntilTimeout(clientConn, t)
 
-	// case with IAC GA split between sends
+	// TODO: case with IAC GA split between sends
 
-	// case with uncompressed + IAC GA in compressed
+	// TODO: case with uncompressed + IAC GA in compressed
 
 	tearDown(clientConn, mudConn, server)
 }

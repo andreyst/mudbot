@@ -1,19 +1,14 @@
 package proxy
 
 import (
-	"fmt"
-	"mudbot/bot"
 	"mudbot/botutil"
 	"net"
 	"sync"
-	"time"
 
 	"go.uber.org/zap"
 )
 
 type Worker struct {
-	bot *bot.Bot
-
 	clientConn net.Conn
 	mudConn    net.Conn
 
@@ -30,18 +25,14 @@ type Worker struct {
 	logger *zap.SugaredLogger
 }
 
-func NewWorker(clientConn net.Conn, mudConn net.Conn) *Worker {
-	bot := bot.NewBot()
-
+func NewWorker(clientConn net.Conn, mudConn net.Conn, botParseCallback AccumulatorCallback) *Worker {
 	w := Worker{
-		bot: bot,
-
 		logger: botutil.NewLogger("worker"),
 
 		done: make(chan struct{}),
 
 		clientToMudCopier: NewCopier(ACCUMULATION_POLICY_DONT, nil, botutil.NewLogger("cp_client")),
-		mudToClientCopier: NewCopier(ACCUMULATION_POLICY_DO, bot, botutil.NewLogger("cp_mud")),
+		mudToClientCopier: NewCopier(ACCUMULATION_POLICY_DO, botParseCallback, botutil.NewLogger("cp_mud")),
 
 		clientConn: clientConn,
 		mudConn:    mudConn,
@@ -54,18 +45,6 @@ func (w *Worker) Run() {
 	w.logger.Info("Starting worker")
 
 	w.wg.Add(1)
-
-	go func() {
-		for {
-			select {
-			case <-w.done:
-				return
-			default:
-			}
-			fmt.Printf("Bot: %+v\n", w.bot)
-			time.Sleep(time.Duration(2) * time.Second)
-		}
-	}()
 
 	go w.clientToMudCopier.Run(w.mudConn, w.clientConn, w.done)
 	go w.mudToClientCopier.Run(w.clientConn, w.mudConn, w.done)

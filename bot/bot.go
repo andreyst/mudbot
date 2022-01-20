@@ -8,10 +8,10 @@ import (
 )
 
 type Bot struct {
-	logger *zap.SugaredLogger
-
 	char  Char
 	fight Fight
+
+	logger *zap.SugaredLogger
 }
 
 func NewBot() *Bot {
