@@ -7,7 +7,7 @@ import (
 )
 
 func TestStripAnsi1(t *testing.T) {
-	ref := "asdlkalds"
+	ref := "no ansi here at all"
 	res := StripAnsi(ref)
 
 	assert.Equal(t, ref, res)
