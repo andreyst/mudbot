@@ -8,7 +8,10 @@ import (
 )
 
 func init() {
-	os.Setenv("LOG_LEVEL", "DEBUG")
+	err := os.Setenv("LOG_LEVEL", "DEBUG")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func TestParseScore1(t *testing.T) {
@@ -44,12 +47,13 @@ func TestParseScore1(t *testing.T) {
 	}
 
 	b := NewBot(Credentials{})
-	b.ParseScore(s)
+	e := b.ParseScore(s)
 
+	assert.Equal(t, EVENT_SCORE, e)
 	assert.Equal(t, ref, b.Char)
 }
 
 func TestParseScoreBadInput(t *testing.T) {
 	b := NewBot(Credentials{})
-	assert.Equal(t, EVENT_NOP, b.ParseScore("zxczxczcaqd"))
+	assert.Equal(t, EVENT_NOP, b.ParseScore("not a score string"))
 }
