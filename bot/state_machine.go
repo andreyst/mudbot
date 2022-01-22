@@ -87,7 +87,10 @@ func (b *Bot) ProcessIdle() {
 
 func (b *Bot) SwitchState(newState State) {
 	b.logger.Debugf("state: %v->%v", b.State, newState)
-	if newState == STATE_STUCK {
+	switch newState {
+	case STATE_IDLE:
+		b.SendToMud("") // CR;LF to trigger prompt
+	case STATE_STUCK:
 		b.ErrorClient("I AM STUCK")
 	}
 	b.State = newState
