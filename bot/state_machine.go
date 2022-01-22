@@ -31,6 +31,19 @@ func (b *Bot) ProcessEvent(e Event) {
 		}
 	case STATE_IDLE:
 		b.ProcessIdle()
+	case STATE_EATING:
+		switch e {
+		case EVENT_ATE:
+			if b.Char.IsHungry {
+				b.Eat()
+			} else {
+				b.SwitchState(STATE_IDLE)
+			}
+		case EVENT_NO_SUCH_ITEM:
+			b.ErrorClient("Cannot find food!")
+			b.Char.NoFood = true
+			b.SwitchState(STATE_IDLE)
+		}
 	case STATE_DRINKING:
 		switch e {
 		case EVENT_DRANK:
@@ -41,19 +54,12 @@ func (b *Bot) ProcessEvent(e Event) {
 			}
 		case EVENT_WATER_CONTAINER_EMPTY:
 			b.ErrorClient("Water container empty!")
+			b.Char.NoWater = true
+			b.SwitchState(STATE_IDLE)
 		case EVENT_NO_SUCH_ITEM:
-			b.SwitchState(STATE_STUCK)
-		}
-	case STATE_EATING:
-		switch e {
-		case EVENT_ATE:
-			if b.Char.IsHungry {
-				b.Eat()
-			} else {
-				b.SwitchState(STATE_IDLE)
-			}
-		case EVENT_NO_SUCH_ITEM:
-			b.SwitchState(STATE_STUCK)
+			b.ErrorClient("Cannot find water container!")
+			b.Char.NoWater = true
+			b.SwitchState(STATE_IDLE)
 		}
 	case STATE_RESTING:
 		switch e {
@@ -73,12 +79,12 @@ func (b *Bot) ProcessEvents(events []Event) {
 }
 
 func (b *Bot) ProcessIdle() {
-	if b.Char.IsThirsty {
-		b.SwitchState(STATE_DRINKING)
-		b.Drink()
-	} else if b.Char.IsHungry {
+	if b.Char.IsHungry && !b.Char.NoFood {
 		b.SwitchState(STATE_EATING)
 		b.Eat()
+	} else if b.Char.IsThirsty && !b.Char.NoWater {
+		b.SwitchState(STATE_DRINKING)
+		b.Drink()
 	} else if b.Char.Stamina < 15 {
 		b.SwitchState(STATE_RESTING)
 		b.Rest()
