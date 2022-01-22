@@ -99,7 +99,7 @@ func (b *Bot) SwitchState(newState State) {
 	b.logger.Debugf("state: %v->%v", b.State, newState)
 	switch newState {
 	case STATE_IDLE:
-		b.SendToMud("") // CR;LF to trigger prompt
+		b.SendToMudWithoutEcho("") // CR;LF to trigger prompt
 	case STATE_STUCK:
 		b.ErrorClient("I AM STUCK")
 	}
