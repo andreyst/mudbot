@@ -68,6 +68,10 @@ func (b *Bot) ProcessEvent(e Event) {
 				b.Stand()
 				b.SwitchState(STATE_IDLE)
 			}
+		case EVENT_WENT_TO_SLEEP:
+			b.SwitchState(STATE_IDLE)
+		case EVENT_STOOD_UP:
+			b.SwitchState(STATE_IDLE)
 		}
 	}
 }
