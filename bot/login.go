@@ -9,22 +9,19 @@ var nameStr = "Введите имя Вашего персонажа или \"н
 var passwordStr = "Пароль:"
 var crLfStr = "*** НАЖМИТЕ ВВОД:"
 var enterGameStr = "1) Войти в игру."
-var welcomeStr = "Добро пожаловать на Кринн! Пусть Ваш визит будет увлекательным!"
-var reconnectingStr = "Воссоединяемся."
 
-func (b *Bot) ParseLogin(s string) {
+func (b *Bot) ParseLogin(s string) Event {
 	if botutil.HasLinePrefix(s, encodingStr) {
-		b.SendToMud("u")
+		return EVENT_ENCODING_MENU
 	} else if botutil.HasLinePrefix(s, nameStr) {
-		b.SendToMud(b.Credentials.Login)
+		return EVENT_LOGIN_PROMPT
 	} else if botutil.HasLinePrefix(s, passwordStr) {
-		b.SendToMudWithoutEcho(b.Credentials.Password)
+		return EVENT_PASSWORD_PROMPT
 	} else if botutil.HasLinePrefix(s, crLfStr) {
-		b.SendToMud("")
+		return EVENT_PRESS_CRFL_PROMPT
 	} else if botutil.HasLinePrefix(s, enterGameStr) {
-		b.SendToMud("1")
-	} else if botutil.HasAnyLinePrefix(s, []string{welcomeStr, reconnectingStr}) {
-		b.InGame = true
-		b.Step()
+		return EVENT_GAME_MENU
+	} else {
+		return EVENT_NOP
 	}
 }

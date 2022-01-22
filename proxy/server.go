@@ -98,5 +98,5 @@ func (s *Server) SendToMud(str string, echo bool) {
 }
 
 func (s *Server) SendToClient(str string) {
-	s.workers[0].sendToClient([]byte(str))
+	s.workers[0].sendToClient([]byte("%bot: " + str + "\n"))
 }

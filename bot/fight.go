@@ -37,6 +37,7 @@ func (b *Bot) ParseFight(s string) {
 		}
 	}
 }
+
 func (b *Bot) ParseCombatant(s string) Combatant {
 	parts := strings.Split(s, ":")
 	subParts := strings.Split(parts[1], ",")
@@ -45,8 +46,18 @@ func (b *Bot) ParseCombatant(s string) Combatant {
 	switch subParts[0] {
 	case "великолепное":
 		condition = CONDITION_PERFECT
+	case "оч.хорошее":
+		condition = CONDITION_VERY_GOOD
+	case "хорошее":
+		condition = CONDITION_GOOD
 	case "среднее":
 		condition = CONDITION_AVERAGE
+	case "плохое":
+		condition = CONDITION_BAD
+	case "оч.плохое":
+		condition = CONDITION_VERY_BAD
+	case "ужасное":
+		condition = CONDITION_AWFUL
 	case "умирает":
 		condition = CONDITION_DYING
 	default:
@@ -57,6 +68,8 @@ func (b *Bot) ParseCombatant(s string) Combatant {
 	position := POSITION_STANDING
 	if len(subParts) > 1 {
 		switch subParts[1] {
+		case "сид":
+			position = POSITION_SITTING
 		case "леж":
 			position = POSITION_LYING
 		default:

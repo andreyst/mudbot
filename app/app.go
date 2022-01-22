@@ -37,6 +37,7 @@ func NewApp(localAddr string, remoteAddr string) *App {
 
 	server := proxy.NewServer(localAddr, remoteAddr, bot.Parse)
 	bot.SetToMudSender(server.SendToMud)
+	bot.SetToClientSender(server.SendToClient)
 
 	app := App{
 		bot:    bot,

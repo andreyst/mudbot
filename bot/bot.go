@@ -1,13 +1,16 @@
 package bot
 
 import (
+	"fmt"
 	"mudbot/botutil"
 	"strings"
 
+	"github.com/fatih/color"
 	"go.uber.org/zap"
 )
 
-type Sender func(string, bool)
+type Sender func(string)
+type EchoSender func(string, bool)
 
 type Bot struct {
 	Credentials Credentials
@@ -16,8 +19,12 @@ type Bot struct {
 
 	InGame bool
 
-	toMudSender Sender
-	logger      *zap.SugaredLogger
+	State State
+
+	toMudSender    EchoSender
+	toClientSender Sender
+
+	logger *zap.SugaredLogger
 }
 
 func NewBot(credentials Credentials) *Bot {
@@ -29,8 +36,12 @@ func NewBot(credentials Credentials) *Bot {
 	return &bot
 }
 
-func (b *Bot) SetToMudSender(f Sender) {
+func (b *Bot) SetToMudSender(f EchoSender) {
 	b.toMudSender = func(s string, echo bool) { f(s+"\r\n", echo) }
+}
+
+func (b *Bot) SetToClientSender(f Sender) {
+	b.toClientSender = func(s string) { f(s) }
 }
 
 func (b *Bot) SendToMud(s string) {
@@ -41,25 +52,42 @@ func (b *Bot) SendToMudWithoutEcho(s string) {
 	b.toMudSender(s, false)
 }
 
+func (b *Bot) SendToClient(s string) {
+	b.toClientSender(s)
+}
+
+func (b *Bot) WarnClient(s string) {
+	b.logger.Warnf(s)
+
+	c := color.New(color.FgHiYellow)
+	c.EnableColor()
+	b.toClientSender(c.SprintFunc()("WARN: " + s))
+}
+
+func (b *Bot) WarnClientf(format string, args ...interface{}) {
+	s := fmt.Sprintf(format, args...)
+	b.WarnClient(s)
+}
+
+func (b *Bot) ErrorClient(s string) {
+	b.logger.Errorf(s)
+
+	c := color.New(color.FgHiRed)
+	c.EnableColor()
+	b.toClientSender(c.SprintFunc()("ERROR: " + s))
+}
+
+func (b *Bot) ErrorClientf(format string, args ...interface{}) {
+	s := fmt.Sprintf(format, args...)
+	b.ErrorClient(s)
+}
+
 func (b *Bot) Parse(chunk []byte) {
 	s := strings.ReplaceAll(string(chunk), "\r\n", "\n")
 
-	if !b.InGame {
-		b.ParseLogin(s)
-	} else {
-		b.ParseScore(s)
-		b.ParsePrompt(s)
-	}
-}
-
-func (b *Bot) Step() {
-	if !b.InGame {
-		return
-	}
-
-	if !b.Fight.IsActive {
-		if !b.Char.Initialized {
-			b.SendToMud("score")
-		}
-	}
+	b.ProcessEvent(b.ParsePrompt(s))
+	b.ProcessEvent(b.ParseLogin(s))
+	b.ProcessEvent(b.ParseScore(s))
+	b.ProcessEvents(b.ParseConsumation(s))
+	b.ProcessEvents(b.ParseFeedback(s))
 }

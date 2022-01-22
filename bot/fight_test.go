@@ -63,14 +63,14 @@ func TestFight1(t *testing.T) {
 }
 
 func TestFight2(t *testing.T) {
-	s := `[хомячок:умирает,леж]`
+	s := `[хомячок:умирает,сид]`
 
 	ref := Fight{
 		IsActive: true,
 		Enemy: Combatant{
 			Name:      "хомячок",
 			Condition: CONDITION_DYING,
-			Position:  POSITION_LYING,
+			Position:  POSITION_SITTING,
 		},
 	}
 

@@ -16,11 +16,11 @@ var scoreMatcher = regroup.MustCompile(strings.Trim(`
 .*
 ^Вы (?P<Position>(стоите|сидите|отдыхаете|спите))\.$`, "\n"))
 
-func (b *Bot) ParseScore(s string) bool {
+func (b *Bot) ParseScore(s string) Event {
 	// TODO: Add proper error handling
 	match, _ := scoreMatcher.Groups(s)
 	if match == nil {
-		return false
+		return EVENT_NOP
 	}
 
 	b.Char.Initialized = true
@@ -56,8 +56,8 @@ func (b *Bot) ParseScore(s string) bool {
 	case "маг":
 		b.Char.Class = CLASS_MAGE
 	default:
-		b.logger.Warnf("Unknown class %+v", match["Class"])
-		// TODO: Show to client warning about unknown class & log it
+		b.WarnClientf("Unknown class %v", match["Class"])
+		// TODO: Log about unknown class
 	}
 
 	switch match["Gender"] {
@@ -66,8 +66,8 @@ func (b *Bot) ParseScore(s string) bool {
 	case "женщина":
 		b.Char.Gender = GENDER_FEMALE
 	default:
-		b.logger.Warnf("Unknown gender %+v", match["Gender"])
-		// TODO: Show to client warning about unknown gender & log it
+		b.WarnClientf("Unknown gender %v", match["Gender"])
+		// TODO: Log it
 	}
 
 	switch match["Position"] {
@@ -80,8 +80,8 @@ func (b *Bot) ParseScore(s string) bool {
 	case "спите":
 		b.Char.Position = POSITION_SLEEPING
 	default:
-		b.logger.Warnf("Unknown position %+v", match["Position"])
-		// TODO: Show to client warning about unknown position & log it
+		b.WarnClientf("Unknown position %+v", match["Position"])
+		// TODO: Log it
 	}
 
 	if strings.Contains(s, "Ваша душа чиста, и Ваша вера в идеалы Добра непоколебима.") {
@@ -96,5 +96,5 @@ func (b *Bot) ParseScore(s string) bool {
 
 	b.logger.Debugf("Char after score parse:\n%+v", b.Char)
 
-	return true
+	return EVENT_SCORE
 }

@@ -23,6 +23,7 @@ func TestParseScore1(t *testing.T) {
 Вы хотите есть.`
 
 	ref := Char{
+		Initialized:      true,
 		Name:             "Венге",
 		Age:              19,
 		Level:            1,
@@ -50,5 +51,5 @@ func TestParseScore1(t *testing.T) {
 
 func TestParseScoreBadInput(t *testing.T) {
 	b := NewBot(Credentials{})
-	assert.False(t, b.ParseScore("zxczxczcaqd"))
+	assert.Equal(t, EVENT_NOP, b.ParseScore("zxczxczcaqd"))
 }
