@@ -81,6 +81,9 @@ type Char struct {
 	IsHungry  bool
 	IsThirsty bool
 
+	NoFood  bool
+	NoWater bool
+
 	MoralAlignment   MoralAlignment
 	EthicalAlignment EthicalAlignment
 
