@@ -91,9 +91,6 @@ func (b *Bot) ParseScore(s string) Event {
 		b.Char.MoralAlignment = MORAL_ALIGNMENT_GOOD
 	}
 
-	b.Char.IsHungry = strings.Contains(s, "Вы хотите есть.")
-	b.Char.IsThirsty = strings.Contains(s, "Вы хотите пить.")
-
 	b.logger.Debugf("Char after score parse:\n%+v", b.Char)
 
 	return EVENT_SCORE
