@@ -30,17 +30,17 @@ func NewApp(localAddr string, remoteAddr string) *App {
 		logger.Fatalf("PASSWORD env var missing")
 	}
 
-	bot := bot.NewBot(bot.Credentials{
+	b := bot.NewBot(bot.Credentials{
 		Login:    login,
 		Password: password,
 	})
 
-	server := proxy.NewServer(localAddr, remoteAddr, bot.Parse)
-	bot.SetToMudSender(server.SendToMud)
-	bot.SetToClientSender(server.SendToClient)
+	server := proxy.NewServer(localAddr, remoteAddr, b.Parse)
+	b.SetToMudSender(server.SendToMud)
+	b.SetToClientSender(server.SendToClient)
 
 	app := App{
-		bot:    bot,
+		bot:    b,
 		server: server,
 		logger: logger,
 	}
