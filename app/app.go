@@ -50,8 +50,16 @@ func NewApp(localAddr string, remoteAddr string) *App {
 
 func (app *App) Start() {
 	go func() {
+		fo, err := os.Create("/tmp/mudbot")
+		if err != nil {
+			panic(err)
+		}
 		for {
-			fmt.Printf("Bot: %+v\n", app.bot)
+			_, err := fo.Seek(0, 0)
+			_, err = fo.Write([]byte(fmt.Sprintf("%+v", app.bot)))
+			if err != nil {
+				panic(err)
+			}
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}()
