@@ -7,13 +7,13 @@ import (
 )
 
 func TestHasLinePrefix(t *testing.T) {
-	assert.Equal(t, HasLinePrefix("test\nmoretest", "moretest"), true)
-	assert.Equal(t, HasLinePrefix("test\nmoretest", "test"), true)
-	assert.Equal(t, HasLinePrefix("test\nmoretest", "missing"), false)
+	assert.Equal(t, HasLinePrefix("test\nmore test", "more test"), true)
+	assert.Equal(t, HasLinePrefix("test\nmore test", "test"), true)
+	assert.Equal(t, HasLinePrefix("test\nmore test", "missing"), false)
 }
 
 func TestHasLinePrefixes(t *testing.T) {
-	assert.Equal(t, HasAnyLinePrefix("test\nmoretest", []string{"no", "moretest"}), true)
-	assert.Equal(t, HasAnyLinePrefix("test\nmoretest", []string{"test", "no"}), true)
-	assert.Equal(t, HasAnyLinePrefix("test\nmoretest", []string{"no", "moreno"}), false)
+	assert.Equal(t, HasAnyLinePrefix("test\nmore test", []string{"no", "more test"}), true)
+	assert.Equal(t, HasAnyLinePrefix("test\nmore test", []string{"test", "no"}), true)
+	assert.Equal(t, HasAnyLinePrefix("test\nmore test", []string{"no", "moreno"}), false)
 }
