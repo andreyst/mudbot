@@ -6,7 +6,10 @@ import (
 
 var prHungry = "Вы хотите есть."
 var prThirsty = "Вы хотите пить."
+var prHungryAlt = "Вам пора подкрепиться."
+var prThirstyAlt = "Вы ощущаете сухость во рту."
 var prHungryAndThirsty = "Вы хотите есть. Вы хотите пить."
+var prHungryAndThirstyAlt = "Вам пора подкрепиться. Вы ощущаете сухость во рту."
 var prTimeToEat = "Пришла пора подкрепиться."
 var prTimeToDrink = "Во рту у Вас пересохло."
 var prSatiated = "Вы наелись."
@@ -17,10 +20,10 @@ var prAte = "Вы съели"
 var prDrank = "Вы выпили"
 
 func (b *Bot) ParseConsumation(s string) (res []Event) {
-	if botutil.HasAnyLinePrefix(s, []string{prHungry, prHungryAndThirsty, prTimeToEat}) {
+	if botutil.HasAnyLinePrefix(s, []string{prHungry, prHungryAlt, prHungryAndThirsty, prHungryAndThirstyAlt, prTimeToEat}) {
 		b.Char.IsHungry = true
 	}
-	if botutil.HasAnyLinePrefix(s, []string{prThirsty, prHungryAndThirsty, prTimeToDrink}) {
+	if botutil.HasAnyLinePrefix(s, []string{prThirsty, prThirstyAlt, prHungryAndThirsty, prHungryAndThirstyAlt, prTimeToDrink}) {
 		b.Char.IsThirsty = true
 	}
 	if botutil.HasAnyLinePrefix(s, []string{prSatiated, prFull}) {
