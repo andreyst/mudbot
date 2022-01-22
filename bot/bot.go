@@ -83,11 +83,15 @@ func (b *Bot) ErrorClientf(format string, args ...interface{}) {
 }
 
 func (b *Bot) Parse(chunk []byte) {
+	// TODO: Remove this in favor of splitting multiline regexp
+	// to decrease level of implicitness ("who changed linefeeds?")
 	s := strings.ReplaceAll(string(chunk), "\r\n", "\n")
 
-	b.ProcessEvent(b.ParsePrompt(s))
 	b.ProcessEvent(b.ParseLogin(s))
 	b.ProcessEvent(b.ParseScore(s))
+	b.ProcessEvent(b.ParsePosition(s))
 	b.ProcessEvents(b.ParseConsumation(s))
 	b.ProcessEvents(b.ParseFeedback(s))
+	b.ProcessEvent(b.ParseRoom(s))
+	b.ProcessEvent(b.ParsePrompt(s)) // Should always go last to trigger prompt event with all other data
 }
