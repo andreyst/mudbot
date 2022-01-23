@@ -22,8 +22,9 @@ type AccumulatorCallback func([]byte)
 type accumulationPolicy int
 
 const (
-	ACCUMULATION_POLICY_DO accumulationPolicy = iota
-	ACCUMULATION_POLICY_DONT
+	ACCUMULATION_POLICY_DISABLED accumulationPolicy = iota
+	ACCUMULATION_POLICY_FLUSH_BY_GA
+	ACCUMULATION_POLICY_FLUSH_BY_LF
 )
 
 type copierState int
@@ -123,11 +124,22 @@ func (c *Copier) copy(dst net.Conn, src net.Conn, workerDone chan struct{}) {
 				switch b {
 				case telnet.IAC:
 					c.state = STATE_TELNET_IAC
+				case '\n':
+					if c.accumulationPolicy == ACCUMULATION_POLICY_FLUSH_BY_LF {
+						// Do not capture \r\n
+						// TODO: Allow configuration for client sending only \n
+						appendBytes := c.readBytes[afterFlushIdx : c.idx-1]
+						c.accumulator = append(c.accumulator, appendBytes...)
+						c.flushAccumulator()
+						afterFlushIdx = c.idx + 1
+					}
+					c.state = STATE_START
+
 				}
 			case STATE_TELNET_IAC:
 				switch b {
 				case telnet.COMMAND_GO_AHEAD:
-					if c.accumulationPolicy == ACCUMULATION_POLICY_DO {
+					if c.accumulationPolicy == ACCUMULATION_POLICY_FLUSH_BY_GA {
 						appendBytes := c.readBytes[afterFlushIdx : c.idx+1-len(telnet.GaSequence)]
 						c.accumulator = append(c.accumulator, appendBytes...)
 						c.flushAccumulator()
@@ -182,7 +194,7 @@ func (c *Copier) copy(dst net.Conn, src net.Conn, workerDone chan struct{}) {
 
 		c.writeToConn(c.readBytes, dst)
 
-		if c.accumulationPolicy == ACCUMULATION_POLICY_DO {
+		if c.accumulationPolicy != ACCUMULATION_POLICY_DISABLED {
 			c.accumulator = append(c.accumulator, c.readBytes[afterFlushIdx:]...)
 			c.logger.Debugf("Accumulator str:\n%v", string(c.accumulator))
 		}

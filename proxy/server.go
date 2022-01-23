@@ -16,18 +16,20 @@ type Server struct {
 	stopped  bool
 	workers  []*Worker
 
-	botParseCallback AccumulatorCallback
+	onClientFlush AccumulatorCallback
+	onMudFlush    AccumulatorCallback
 
 	wg sync.WaitGroup
 
 	logger *zap.SugaredLogger
 }
 
-func NewServer(localAddr string, remoteAddr string, botParseCallback AccumulatorCallback) *Server {
+func NewServer(localAddr string, remoteAddr string, onClientFlush AccumulatorCallback, onMudFlush AccumulatorCallback) *Server {
 	s := &Server{
-		localAddr:        localAddr,
-		remoteAddr:       remoteAddr,
-		botParseCallback: botParseCallback,
+		localAddr:     localAddr,
+		remoteAddr:    remoteAddr,
+		onClientFlush: onClientFlush,
+		onMudFlush:    onMudFlush,
 	}
 	s.logger = botutil.NewLogger("server")
 
@@ -85,7 +87,7 @@ func (s *Server) startWorker(local net.Conn, remoteAddr string) {
 		return
 	}
 
-	worker := NewWorker(local, remote, s.botParseCallback)
+	worker := NewWorker(local, remote, s.onClientFlush, s.onMudFlush)
 	s.workers = append(s.workers, worker)
 	go worker.Run()
 }

@@ -25,14 +25,14 @@ type Worker struct {
 	logger *zap.SugaredLogger
 }
 
-func NewWorker(clientConn net.Conn, mudConn net.Conn, botParseCallback AccumulatorCallback) *Worker {
+func NewWorker(clientConn net.Conn, mudConn net.Conn, onClientFlush AccumulatorCallback, onMudFlush AccumulatorCallback) *Worker {
 	w := Worker{
 		logger: botutil.NewLogger("worker"),
 
 		done: make(chan struct{}),
 
-		clientToMudCopier: NewCopier(ACCUMULATION_POLICY_DONT, nil, botutil.NewLogger("cp_client")),
-		mudToClientCopier: NewCopier(ACCUMULATION_POLICY_DO, botParseCallback, botutil.NewLogger("cp_mud")),
+		clientToMudCopier: NewCopier(ACCUMULATION_POLICY_FLUSH_BY_LF, onClientFlush, botutil.NewLogger("cp_client")),
+		mudToClientCopier: NewCopier(ACCUMULATION_POLICY_FLUSH_BY_GA, onMudFlush, botutil.NewLogger("cp_mud")),
 
 		clientConn: clientConn,
 		mudConn:    mudConn,

@@ -44,7 +44,8 @@ func tearUp() (clientConn net.Conn, mudConn net.Conn, server *Server) {
 		mudWg.Done()
 	}()
 
-	server = NewServer(proxyAddr, mudAddr, func([]byte) {})
+	nopCallback := func([]byte) {}
+	server = NewServer(proxyAddr, mudAddr, nopCallback, nopCallback)
 	go server.Start()
 
 	logger.Infof("Connecting to proxy")

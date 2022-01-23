@@ -8,13 +8,14 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[ACCUMULATION_POLICY_DO-0]
-	_ = x[ACCUMULATION_POLICY_DONT-1]
+	_ = x[ACCUMULATION_POLICY_DISABLED-0]
+	_ = x[ACCUMULATION_POLICY_FLUSH_BY_GA-1]
+	_ = x[ACCUMULATION_POLICY_FLUSH_BY_LF-2]
 }
 
-const _accumulationPolicy_name = "ACCUMULATION_POLICY_DOACCUMULATION_POLICY_DONT"
+const _accumulationPolicy_name = "ACCUMULATION_POLICY_DISABLEDACCUMULATION_POLICY_FLUSH_BY_GAACCUMULATION_POLICY_FLUSH_BY_LF"
 
-var _accumulationPolicy_index = [...]uint8{0, 22, 46}
+var _accumulationPolicy_index = [...]uint8{0, 28, 59, 90}
 
 func (i accumulationPolicy) String() string {
 	if i < 0 || i >= accumulationPolicy(len(_accumulationPolicy_index)-1) {

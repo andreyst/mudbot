@@ -2,8 +2,11 @@ package app
 
 import (
 	"fmt"
+	"mudbot/atlas"
 	"mudbot/bot"
 	"mudbot/botutil"
+	"mudbot/parser/client"
+	"mudbot/parser/mud"
 	"mudbot/proxy"
 	"os"
 	"time"
@@ -14,6 +17,7 @@ import (
 type App struct {
 	bot    *bot.Bot
 	server *proxy.Server
+	atlas  *atlas.Atlas
 
 	logger *zap.SugaredLogger
 }
@@ -30,12 +34,20 @@ func NewApp(localAddr string, remoteAddr string) *App {
 		logger.Fatalf("PASSWORD env var missing")
 	}
 
+	a := atlas.NewAtlas()
+
 	b := bot.NewBot(bot.Credentials{
 		Login:    login,
 		Password: password,
 	})
 
-	server := proxy.NewServer(localAddr, remoteAddr, b.Parse)
+	clientParser := client.NewParser(a)
+	mudParser := mud.NewParser(a)
+
+	server := proxy.NewServer(localAddr, remoteAddr, clientParser.Parse, func(bytes []byte) {
+		mudParser.Parse(bytes)
+		b.Parse(bytes)
+	})
 	b.SetToMudSender(server.SendToMud)
 	b.SetToClientSender(server.SendToClient)
 
