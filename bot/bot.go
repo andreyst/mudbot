@@ -90,7 +90,7 @@ func (b *Bot) Parse(chunk []byte) {
 	b.ProcessEvent(b.ParseLogin(s))
 	b.ProcessEvent(b.ParseScore(s))
 	b.ProcessEvent(b.ParsePosition(s))
-	b.ProcessEvents(b.ParseConsumation(s))
+	b.ProcessEvents(b.ParseConsumption(s))
 	b.ProcessEvents(b.ParseFeedback(s))
 	b.ProcessEvent(b.ParseRoom(s))
 	b.ProcessEvent(b.ParsePrompt(s)) // Should always go last to trigger prompt event with all other data

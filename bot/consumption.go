@@ -19,7 +19,7 @@ var prOverflowing = "Ваш желудок не выдержит столько 
 var prAte = "Вы съели"
 var prDrank = "Вы выпили"
 
-func (b *Bot) ParseConsumation(s string) (res []Event) {
+func (b *Bot) ParseConsumption(s string) (res []Event) {
 	if botutil.HasAnyLinePrefix(s, []string{prHungry, prHungryAlt, prHungryAndThirsty, prHungryAndThirstyAlt, prTimeToEat}) {
 		b.Char.IsHungry = true
 	}
