@@ -39,8 +39,6 @@ func TestParseScore1(t *testing.T) {
 		Stamina:          98,
 		MaxStamina:       100,
 		Money:            48,
-		IsHungry:         true,
-		IsThirsty:        false,
 		Position:         POSITION_RESTING,
 		Gender:           GENDER_MALE,
 		Class:            CLASS_MERCENARY,
