@@ -9,6 +9,8 @@ import (
 	"mudbot/parser/mud"
 	"mudbot/proxy"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -52,6 +54,7 @@ func NewApp(localAddr string, remoteAddr string) *App {
 	b.SetToClientSender(server.SendToClient)
 
 	app := App{
+		atlas:  a,
 		bot:    b,
 		server: server,
 		logger: logger,
@@ -62,16 +65,61 @@ func NewApp(localAddr string, remoteAddr string) *App {
 
 func (app *App) Start() {
 	go func() {
-		fo, err := os.Create("/tmp/mudbot")
+		botFo, err := os.Create("/tmp/mudbot")
 		if err != nil {
 			panic(err)
 		}
+
+		atlasFo, err := os.Create("/tmp/atlas")
+		if err != nil {
+			panic(err)
+		}
+
+		atlasDotFo, err := os.Create("/tmp/atlas.dot")
+		if err != nil {
+			panic(err)
+		}
+
 		for {
-			_, err := fo.Seek(0, 0)
-			_, err = fo.Write([]byte(fmt.Sprintf("%+v", app.bot)))
-			if err != nil {
+			_, botSeekErr := botFo.Seek(0, 0)
+			if botSeekErr != nil {
 				panic(err)
 			}
+			_, botWriteErr := botFo.Write([]byte(fmt.Sprintf("%+v", app.bot)))
+			if botWriteErr != nil {
+				panic(err)
+			}
+
+			_, atlasSeekErr := atlasFo.Seek(0, 0)
+			if atlasSeekErr != nil {
+				panic(err)
+			}
+			_, atlasWriteErr := atlasFo.Write([]byte(fmt.Sprintf("%+v", app.atlas)))
+			if atlasWriteErr != nil {
+				panic(err)
+			}
+
+			_, atlasDotSeekErr := atlasDotFo.Seek(0, 0)
+			if atlasDotSeekErr != nil {
+				panic(err)
+			}
+			var dot strings.Builder
+			dot.WriteString("digraph G {\n")
+			for roomId, room := range app.atlas.Rooms {
+				roomIdStr := strconv.FormatInt(roomId, 10)
+				dot.WriteString("  r" + roomIdStr + " [label=\"" + strings.ReplaceAll(room.Name, "\"", "\\\"") + "\"]\n")
+				for exitDir, exitRoomId := range room.Exits {
+					exitRoomIdStr := strconv.FormatInt(exitRoomId, 10)
+					dot.WriteString("  r" + roomIdStr + " -> r" + exitRoomIdStr + " [ label=\"" + exitDir.String() + "\" ];\n")
+				}
+				dot.WriteString("\n")
+			}
+			dot.WriteString("}")
+			_, atlasDotWriteErr := atlasDotFo.Write([]byte(dot.String()))
+			if atlasDotWriteErr != nil {
+				panic(err)
+			}
+
 			time.Sleep(time.Duration(2) * time.Second)
 		}
 	}()

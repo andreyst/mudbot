@@ -17,13 +17,22 @@ func (p *Parser) ParseRoom(s string) (room atlas.Room, matched bool) {
 		return
 	}
 
+	room = atlas.NewRoom()
 	matched = true
 
 	// TODO: Cover all this in a lot of tests
 	roomExitsStartPos := strings.Index(s, prRoomExits)
 	roomExitsEndPos := roomExitsStartPos + strings.Index(s[roomExitsStartPos:], "\n") - 1
 	roomExitsStr := strings.Trim(botutil.StripAnsi(s[roomExitsStartPos+len(prRoomExits):roomExitsEndPos]), "\r\n] ")
-	room.Exits = strings.Split(roomExitsStr, " ")
+	if roomExitsStr == "None" {
+		roomExitsStr = ""
+	}
+	if roomExitsStr != "" {
+		roomExistsStrArr := strings.Split(roomExitsStr, " ")
+		for _, roomExitStr := range roomExistsStrArr {
+			room.Exits[atlas.NewDirection(roomExitStr)] = 0
+		}
+	}
 
 	// TODO: Handle error if room exits prefix goes first
 	roomNameStartPos := strings.LastIndex(s[:roomExitsStartPos-1], roomNameMarker)
@@ -33,7 +42,7 @@ func (p *Parser) ParseRoom(s string) (room atlas.Room, matched bool) {
 		room.Name = botutil.StripAnsi(s[roomNameStartPos:roomNameEndPos])
 		room.Description = botutil.StripAnsi(strings.Trim(s[roomNameEndPos+2:roomExitsStartPos], "\r\n "))
 	} else {
-		room.NoInfo = true
+		room.PartialInfo = true
 	}
 
 	roomItemsStartPos := roomExitsEndPos + strings.Index(s[roomExitsEndPos:], roomItemsMarker)
