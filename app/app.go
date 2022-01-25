@@ -80,6 +80,11 @@ func (app *App) Start() {
 			panic(err)
 		}
 
+		atlasHtmlFo, err := os.Create("/tmp/atlas.html")
+		if err != nil {
+			panic(err)
+		}
+
 		for {
 			_, botSeekErr := botFo.Seek(0, 0)
 			if botSeekErr != nil {
@@ -114,9 +119,18 @@ func (app *App) Start() {
 				}
 				dot.WriteString("\n")
 			}
-			dot.WriteString("}")
+			dot.WriteString("}\n")
 			_, atlasDotWriteErr := atlasDotFo.Write([]byte(dot.String()))
 			if atlasDotWriteErr != nil {
+				panic(err)
+			}
+
+			_, atlasHtmlSeekErr := atlasHtmlFo.Seek(0, 0)
+			if atlasHtmlSeekErr != nil {
+				panic(err)
+			}
+			_, atlasHtmlWriteErr := atlasHtmlFo.Write([]byte(app.atlas.Html()))
+			if atlasHtmlWriteErr != nil {
 				panic(err)
 			}
 

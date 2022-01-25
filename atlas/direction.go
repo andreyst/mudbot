@@ -73,3 +73,14 @@ func (d Direction) Opposite() Direction {
 		panic(errors.New(fmt.Sprintf("unknown opposite for direction: %s", d)))
 	}
 }
+
+func (d *Direction) UnmarshalText(bytes []byte) error {
+	//d_tmp := NewDirection(string(bytes))
+	*d = NewDirection(string(bytes))
+	//d = NewDirection(string(bytes))
+	return nil
+}
+
+func (d Direction) MarshalText() ([]byte, error) {
+	return []byte(d.String()), nil
+}

@@ -12,6 +12,7 @@ type Atlas struct {
 	lastRoom Room
 
 	Rooms            map[int64]Room
+	Coordinates      Coordinates
 	nextRoomId       int64
 	roomsByShorthand map[string][]Room
 
@@ -42,10 +43,12 @@ func (a *Atlas) RecordRoom(room Room) {
 	fromStr := "not moving"
 	if len(a.movements) > 0 {
 		from = a.movements[0].Opposite()
+		a.Coordinates.AddDir(a.movements[0])
 		fromStr = from.String()
 		a.movements = a.movements[1:]
 		hasFrom = true
 	}
+	room.Coordinates = a.Coordinates
 	var sh string
 	if !room.PartialInfo {
 		sh = room.Shorthand()
@@ -69,7 +72,19 @@ func (a *Atlas) RecordRoom(room Room) {
 					room = realRoomsByShorthand[0]
 				}
 			} else {
-				a.logger.Errorf("Found multiple Rooms fitting shorthand: %+v", realRoomsByShorthand)
+				a.logger.Debugf("Found multiple Rooms fitting shorthand")
+				if hasFrom && a.lastRoom.Id > 0 {
+					for _, realRoom := range realRoomsByShorthand {
+						if realRoom.Exits[from.Opposite()] == a.lastRoom.Id {
+							room = realRoom
+							break
+						}
+					}
+					// TODO: Try to find a room by x/y/z
+					if room.Id == 0 {
+						createRoom = true
+					}
+				} // else: we have multiple rooms fitting current one and no idea where we came from — leave it
 			}
 		}
 

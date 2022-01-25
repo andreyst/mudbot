@@ -9,7 +9,8 @@ import (
 )
 
 type Room struct {
-	Id int64
+	Id          int64
+	Coordinates Coordinates
 
 	Name        string
 	Description string
