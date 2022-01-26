@@ -1,0 +1,177 @@
+<html lang="en">
+<head>
+    <title>Map</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="   crossorigin="anonymous"></script>
+    <style>
+        body {
+            background-color: #222;
+        }
+        #map {
+            width: 1000px;
+            height: 1000px;
+            position: relative;
+        }
+        .room_cont {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+        }
+        .room {
+            position:  absolute;
+            background-color: red;
+            color: white;
+            text-align: center;
+            line-height: 2em;
+            font-size: 10px;
+            top: 5px;
+            left: 5px;
+            width: 20px;
+            height: 20px;
+        }
+        .exit {
+            position:  absolute;
+            background-color: transparent;
+        }
+        .exit.S {
+            background-color: white;
+            width:  1px;
+            height:  5px;
+            bottom: 0px;
+            left: 15px;
+        }
+        .exit.N {
+            background-color: white;
+            width: 1px;
+            height: 5px;
+            top: 0px;
+            left: 15px;
+        }
+        .exit.W {
+            background-color: white;
+            width: 5px;
+            height: 1px;
+            top: 15px;
+            left: 0px;
+        }
+        .exit.E {
+            background-color: white;
+            width: 5px;
+            height: 1px;
+            top: 15px;
+            right: 0px;
+        }
+        .exit.U {
+            background-color: transparent;
+            color: white;
+            font-size: 12px;
+            position:  absolute;
+            left: 7px;
+            top:  7px;
+        }
+        .exit.U::after {
+            content:  "↑";
+        }
+        .exit.D {
+            background-color: transparent;
+            color: white;
+            font-size: 12px;
+            position:  absolute;
+            right: 7px;
+            top:  7px;
+        }
+        .exit.D::after {
+            content:  "↓";
+        }
+
+    </style>
+</head>
+<body>
+<div id="map">
+</div>
+<script>
+    let roomSize = 30
+
+    let map = $("#map")
+    let rooms = Object.values({roomsJs})
+
+    let xOffset = 0
+    let yOffset = 0
+    let level = 0
+
+    function goUp() {
+        level++
+        drawLevel()
+    }
+
+    function goDown() {
+        level--
+        drawLevel()
+    }
+
+    function makeRoom(info, x, y, exits, counter) {
+        let node = $("<div class='room_cont'></div>").append(`<div class='room'>${counter}</div>`)
+        node.css('top', `${(y+yOffset)*roomSize}px`).css('left', `${(x+xOffset)*roomSize}px`)
+
+        node.find(".room").on('mouseover', function() {
+            console.info(info)
+        })
+
+        if (exits.length) {
+            for (exit of exits) {
+                node.append(`<div class='exit ${exit}'></div>`)
+            }
+        }
+
+        node.find(".exit.U").on('click', goUp)
+        node.find(".exit.D").on('click', goDown)
+
+        return node
+    }
+
+
+    function drawLevel() {
+        let coordsCounts = {}
+
+        map.empty()
+
+        for (let room of rooms) {
+            if (room.Coordinates.Z !== level) continue
+
+            let roomCoordsStr = `${room.Coordinates.X}_${room.Coordinates.Y}_${room.Coordinates.Z}`
+            let counter = ""
+            if (coordsCounts[roomCoordsStr] === undefined) {
+                coordsCounts[roomCoordsStr] = 1
+            } else {
+                coordsCounts[roomCoordsStr]++
+                counter = coordsCounts[roomCoordsStr]
+            }
+
+            map.append(makeRoom(room, room.Coordinates.X, room.Coordinates.Y, Object.keys(room.Exits), counter))
+        }
+
+    }
+
+    function init() {
+        let minX = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.X) }, 0)
+        let maxX = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.X) }, 0)
+        let minY = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Y) }, 0)
+        let maxY = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Y) }, 0)
+        let minZ = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Z) }, 0)
+        let maxZ = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Z) }, 0)
+
+        let mapWidth = maxX - minX
+        let mapHeight = maxY - maxZ
+
+        xOffset = -minX
+        yOffset = -minY
+
+        map.height(`${mapWidth*roomSize}px`).width(`${mapHeight*roomSize}px`)
+
+        drawLevel()
+    }
+
+    init()
+
+</script>
+</body>
+</html>
