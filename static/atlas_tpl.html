@@ -7,8 +7,7 @@
             background-color: #222;
         }
         #map {
-            width: 1000px;
-            height: 1000px;
+            width: 100%;
             position: relative;
         }
         .room_cont {
@@ -27,6 +26,9 @@
             left: 5px;
             width: 20px;
             height: 20px;
+        }
+        .room.current {
+            border: 1px solid white;
         }
         .exit {
             position:  absolute;
@@ -92,7 +94,38 @@
     let roomSize = 30
 
     let map = $("#map")
-    let rooms = Object.values({roomsJs})
+    let mapWidth = 0
+    let mapHeight = 0
+    let zeroX = 0
+    let zeroY = 0
+
+    let rooms = Object.values({})
+    let currentCoordinates = {"X":0, "Y":0, "Z": 0}
+
+    function connect() {
+        let socket = new WebSocket("ws://localhost:3773/rooms");
+        socket.onmessage = function (event) {
+            let payload = {}
+            try {
+                payload = JSON.parse(event.data)
+            } catch {
+            }
+            if (!payload.Rooms || !payload.Coordinates) {
+                console.error("Missing some fields from event.data")
+                return
+            }
+
+            currentCoordinates = payload.Coordinates
+            level = currentCoordinates["Z"]
+            updateRooms(Object.values(payload.Rooms))
+        };
+        socket.onclose = function(event) {
+            console.info("websocket closed, reconnecting...")
+            setTimeout(connect, 1000)
+        }
+    }
+
+    connect()
 
     let xOffset = 0
     let yOffset = 0
@@ -100,21 +133,28 @@
 
     function goUp() {
         level++
-        drawLevel()
+        drawMap()
     }
 
     function goDown() {
         level--
-        drawLevel()
+        drawMap()
     }
 
     function makeRoom(info, x, y, exits, counter) {
         let node = $("<div class='room_cont'></div>").append(`<div class='room'>${counter}</div>`)
-        node.css('top', `${(y+yOffset)*roomSize}px`).css('left', `${(x+xOffset)*roomSize}px`)
+
+        let top  = zeroY+roomSize*(y-currentCoordinates["Y"])
+        let left = zeroX+roomSize*(x-currentCoordinates["X"])
+        node.css('top', `${top}px`).css('left', `${left}px`)
 
         node.find(".room").on('mouseover', function() {
             console.info(info)
         })
+
+        if (x == currentCoordinates["X"] && y == currentCoordinates["Y"] && level == currentCoordinates["Z"]) {
+            node.find(".room").addClass("current")
+        }
 
         if (exits.length) {
             for (exit of exits) {
@@ -129,10 +169,16 @@
     }
 
 
-    function drawLevel() {
+    function drawMap() {
         let coordsCounts = {}
 
         map.empty()
+        map.css("height", "0");
+        map.css("height", $(window).height());
+        mapHeight = map.height()
+        mapWidth = map.width()
+        zeroX = Math.round(mapWidth / 2 - roomSize / 2)
+        zeroY = Math.round(mapHeight / 2 - roomSize / 2)
 
         for (let room of rooms) {
             if (room.Coordinates.Z !== level) continue
@@ -151,7 +197,9 @@
 
     }
 
-    function init() {
+    function updateRooms(newRooms) {
+        rooms = newRooms
+
         let minX = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.X) }, 0)
         let maxX = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.X) }, 0)
         let minY = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Y) }, 0)
@@ -159,18 +207,14 @@
         let minZ = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Z) }, 0)
         let maxZ = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Z) }, 0)
 
-        let mapWidth = maxX - minX
-        let mapHeight = maxY - maxY
+        let mapWidth = maxX - minX + 1
+        let mapHeight = maxY - maxY + 1
 
         xOffset = -minX
         yOffset = -minY
 
-        map.height(`${mapWidth*roomSize}px`).width(`${mapHeight*roomSize}px`)
-
-        drawLevel()
+        drawMap()
     }
-
-    init()
 
 </script>
 </body>

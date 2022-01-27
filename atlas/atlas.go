@@ -18,15 +18,25 @@ type Atlas struct {
 
 	movements []Direction
 
+	server *Server
+
 	logger *zap.SugaredLogger
 }
 
-func NewAtlas() *Atlas {
+func NewAtlas(startServer bool) *Atlas {
 	a := Atlas{
 		Rooms:            make(map[int64]Room),
 		nextRoomId:       1,
 		roomsByShorthand: make(map[string][]Room),
 		logger:           botutil.NewLogger("atlas"),
+	}
+
+	a.server = NewServer(func() (map[int64]Room, Coordinates) {
+		return a.Rooms, a.Coordinates
+	})
+
+	if startServer {
+		a.server.Start(a)
 	}
 
 	return &a
@@ -102,15 +112,17 @@ func (a *Atlas) RecordRoom(room Room) {
 				room.Exits[from] = a.lastRoom.Id
 				a.logger.Debugf("Linked room %+v with %v (%v)", a.lastRoom.Name, room.Name, from.Opposite())
 			}
-		} else {
 		}
 	}
 
 	a.lastRoom = room
 
+	a.server.sendUpdates()
 }
 
 func (a *Atlas) RecordCannotMoveFeedback() {
-	a.movements = a.movements[1:]
+	if len(a.movements) > 0 {
+		a.movements = a.movements[1:]
+	}
 	a.logger.Debugf("Recorded cannot move feedback")
 }
