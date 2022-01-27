@@ -36,14 +36,14 @@
             background-color: white;
             width:  1px;
             height:  5px;
-            bottom: 0px;
+            bottom: 0;
             left: 15px;
         }
         .exit.N {
             background-color: white;
             width: 1px;
             height: 5px;
-            top: 0px;
+            top: 0;
             left: 15px;
         }
         .exit.W {
@@ -51,14 +51,14 @@
             width: 5px;
             height: 1px;
             top: 15px;
-            left: 0px;
+            left: 0;
         }
         .exit.E {
             background-color: white;
             width: 5px;
             height: 1px;
             top: 15px;
-            right: 0px;
+            right: 0;
         }
         .exit.U {
             background-color: transparent;
@@ -160,7 +160,7 @@
         let maxZ = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Z) }, 0)
 
         let mapWidth = maxX - minX
-        let mapHeight = maxY - maxZ
+        let mapHeight = maxY - maxY
 
         xOffset = -minX
         yOffset = -minY
