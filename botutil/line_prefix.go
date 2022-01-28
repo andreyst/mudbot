@@ -18,3 +18,20 @@ func HasAnyLinePrefix(s string, prefixes []string) bool {
 	}
 	return false
 }
+
+func HasLineSuffix(s, suffix string) bool {
+	pos := strings.LastIndex(s, suffix)
+	if pos > -1 && (pos+len(suffix) == len(s) || s[pos+len(suffix)] == '\r') {
+		return true
+	}
+	return false
+}
+
+func HasAnyLineSuffix(s string, suffixes []string) bool {
+	for _, suffix := range suffixes {
+		if HasLineSuffix(s, suffix) {
+			return true
+		}
+	}
+	return false
+}

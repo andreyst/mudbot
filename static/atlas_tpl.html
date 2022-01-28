@@ -99,8 +99,9 @@
     let zeroX = 0
     let zeroY = 0
 
-    let rooms = Object.values({})
+    let rooms = {}
     let currentCoordinates = {"X":0, "Y":0, "Z": 0}
+    let room = {}
 
     function connect() {
         let socket = new WebSocket("ws://localhost:3773/rooms");
@@ -110,14 +111,16 @@
                 payload = JSON.parse(event.data)
             } catch {
             }
-            if (!payload.Rooms || !payload.Coordinates) {
-                console.error("Missing some fields from event.data")
+            if (!payload.Rooms || !payload.Coordinates || payload["Room"] === undefined) {
+                console.error("Missing some fields from event.data", event.data)
                 return
             }
 
             currentCoordinates = payload.Coordinates
+            room = payload.Room
             level = currentCoordinates["Z"]
-            updateRooms(Object.values(payload.Rooms))
+            console.log(room ? room["Id"] : 0)
+            updateRooms(payload.Rooms)
         };
         socket.onclose = function(event) {
             console.info("websocket closed, reconnecting...")
@@ -149,7 +152,11 @@
         node.css('top', `${top}px`).css('left', `${left}px`)
 
         node.find(".room").on('mouseover', function() {
-            console.info(info)
+            for (let room of Object.values(rooms)) {
+                if (x == room.Coordinates["X"] && y == room.Coordinates["Y"] && level == room.Coordinates["Z"]) {
+                    console.log(room)
+                }
+            }
         })
 
         if (x == currentCoordinates["X"] && y == currentCoordinates["Y"] && level == currentCoordinates["Z"]) {
@@ -180,7 +187,7 @@
         zeroX = Math.round(mapWidth / 2 - roomSize / 2)
         zeroY = Math.round(mapHeight / 2 - roomSize / 2)
 
-        for (let room of rooms) {
+        for (let room of Object.values(rooms)) {
             if (room.Coordinates.Z !== level) continue
 
             let roomCoordsStr = `${room.Coordinates.X}_${room.Coordinates.Y}_${room.Coordinates.Z}`
@@ -200,20 +207,40 @@
     function updateRooms(newRooms) {
         rooms = newRooms
 
-        let minX = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.X) }, 0)
-        let maxX = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.X) }, 0)
-        let minY = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Y) }, 0)
-        let maxY = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Y) }, 0)
-        let minZ = rooms.reduce(function(prev, cur){ return Math.min(prev, cur.Coordinates.Z) }, 0)
-        let maxZ = rooms.reduce(function(prev, cur){ return Math.max(prev, cur.Coordinates.Z) }, 0)
-
-        let mapWidth = maxX - minX + 1
-        let mapHeight = maxY - maxY + 1
-
-        xOffset = -minX
-        yOffset = -minY
-
         drawMap()
+    }
+
+    function findPath(from, to) {
+        let visited = {}
+        let res = ""
+        if (from !== to) {
+            res = traverse(from, to, visited)
+        }
+        console.log("Path: " + res)
+    }
+
+    function traverse(from, to, visited) {
+        if (visited[from]) {
+            return ""
+        }
+        visited[from] = true
+
+        let res = ""
+        for (let exit of Object.keys(rooms[from]["Exits"])) {
+            let next = rooms[from]["Exits"][exit]
+            if (next === to) {
+                res = exit
+                break
+            } else if (next > 0){
+                res = traverse(next, to, visited)
+                if (res !== "") {
+                    res = exit + " " + res
+                    break
+                }
+            }
+        }
+
+        return res
     }
 
 </script>

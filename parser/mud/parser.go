@@ -28,12 +28,16 @@ func (p *Parser) Parse(bytes []byte) {
 
 	room, matchedRoom := p.ParseRoom(s)
 	if matchedRoom {
-		p.atlas.RecordRoom(room)
+		p.atlas.RecordRoom(&room)
 	}
 
 	events := p.ParseFeedback(s)
 	for _, e := range events {
-		if e == EVENT_CANNOT_MOVE_IN_THIS_DIRECTION || e == EVENT_CANNOT_BECAUSE_RESTING {
+		if e == EVENT_CANNOT_MOVE_IN_THIS_DIRECTION ||
+			e == EVENT_CANNOT_BECAUSE_RESTING ||
+			e == EVENT_CANNOT_BECAUSE_SITTING ||
+			e == EVENT_CANNOT_BECAUSE_SLEEPING ||
+			e == EVENT_CANNOT_BECAUSE_CLOSED {
 			p.atlas.RecordCannotMoveFeedback()
 		}
 	}

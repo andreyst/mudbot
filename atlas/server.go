@@ -13,7 +13,8 @@ import (
 
 var upgrader = websocket.Upgrader{} // use default options
 
-type DataProvider func() (map[int64]Room, Coordinates)
+type TplProvider func() string
+type DataProvider func() (map[int64]*Room, Coordinates, *Room)
 
 type Server struct {
 	dataProvider DataProvider
@@ -38,7 +39,7 @@ func NewServer(dataProvider DataProvider) *Server {
 	return &s
 }
 
-func (s *Server) makeHomeHandler(tpl string) func(http.ResponseWriter, *http.Request) {
+func (s *Server) makeHomeHandler(tplProvider TplProvider) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
 			http.Error(w, "Not found", http.StatusNotFound)
@@ -48,7 +49,7 @@ func (s *Server) makeHomeHandler(tpl string) func(http.ResponseWriter, *http.Req
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		_, writeErr := w.Write([]byte(tpl))
+		_, writeErr := w.Write([]byte(tplProvider()))
 		if writeErr != nil {
 			s.logger.Errorf("Error writing atlas html: %v\n", writeErr)
 		}
@@ -56,14 +57,16 @@ func (s *Server) makeHomeHandler(tpl string) func(http.ResponseWriter, *http.Req
 }
 
 func sendRooms(dataProvider DataProvider, c *websocket.Conn) error {
-	rooms, coordinates := dataProvider()
+	rooms, coordinates, lastRoom := dataProvider()
 
 	message := struct {
-		Rooms       map[int64]Room
+		Rooms       map[int64]*Room
 		Coordinates Coordinates
+		Room        *Room
 	}{
 		rooms,
 		coordinates,
+		lastRoom,
 	}
 
 	messageJson, messageMarshalErr := json.MarshalIndent(message, "", "  ")
@@ -116,7 +119,7 @@ func (s *Server) makeRoomsHandler() func(http.ResponseWriter, *http.Request) {
 }
 
 func (s *Server) Start(a Atlas) {
-	http.HandleFunc("/", s.makeHomeHandler(a.getHtmlTemplate()))
+	http.HandleFunc("/", s.makeHomeHandler(a.getHtmlTemplate))
 	http.HandleFunc("/rooms", s.makeRoomsHandler())
 	go func() {
 		host := os.Getenv("ATLAS_SERVER_HOST")

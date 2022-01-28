@@ -16,6 +16,11 @@ type Room struct {
 	Description string
 	PartialInfo bool
 
+	// Astraying is a room which does not have
+	// an exit back to the room a player came from
+	// (i.e. which leads astray)
+	IsAstraying bool
+
 	Exits map[Direction]int64
 	Items []string
 	Mobs  []string

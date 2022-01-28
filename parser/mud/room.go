@@ -28,9 +28,11 @@ func (p *Parser) ParseRoom(s string) (room atlas.Room, matched bool) {
 		roomExitsStr = ""
 	}
 	if roomExitsStr != "" {
+		// TODO: Test closed doors case
 		roomExistsStrArr := strings.Split(roomExitsStr, " ")
 		for _, roomExitStr := range roomExistsStrArr {
-			room.Exits[atlas.NewDirection(roomExitStr)] = 0
+			roomExitStrCanonical := p.CanonizeExit(roomExitStr)
+			room.Exits[atlas.NewDirection(roomExitStrCanonical)] = 0
 		}
 	}
 
@@ -62,5 +64,12 @@ func (p *Parser) ParseRoom(s string) (room atlas.Room, matched bool) {
 		room.Mobs = []string{}
 	}
 
+	return
+}
+
+func (p *Parser) CanonizeExit(exit string) (res string) {
+	res = exit
+	res = strings.ReplaceAll(res, "(", "")
+	res = strings.ReplaceAll(res, ")", "")
 	return
 }
