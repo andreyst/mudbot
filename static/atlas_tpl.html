@@ -119,7 +119,6 @@
             currentCoordinates = payload.Coordinates
             room = payload.Room
             level = currentCoordinates["Z"]
-            console.log(room ? room["Id"] : 0)
             updateRooms(payload.Rooms)
         };
         socket.onclose = function(event) {

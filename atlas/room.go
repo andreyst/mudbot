@@ -16,20 +16,29 @@ type Room struct {
 	Description string
 	PartialInfo bool
 
-	// Astraying is a room which does not have
-	// an exit back to the room a player came from
-	// (i.e. which leads astray)
-	IsAstraying bool
-
 	Exits map[Direction]int64
 	Items []string
 	Mobs  []string
 }
 
-func NewRoom() Room {
+func NewRoom() *Room {
 	r := Room{
 		Exits: make(map[Direction]int64),
 	}
+
+	return &r
+}
+
+func NewPrefilledRoom(name string, description string, exits []Direction, items []string, mobs []string) *Room {
+	r := NewRoom()
+
+	r.Name = name
+	r.Description = description
+	for _, exit := range exits {
+		r.Exits[exit] = 0
+	}
+	r.Items = items
+	r.Mobs = mobs
 
 	return r
 }
@@ -47,4 +56,15 @@ func (r Room) Shorthand() string {
 
 	hash := sha1.Sum([]byte(r.Name + "_" + r.Description + "_" + strings.Join(exitsStr, "_")))
 	return hex.EncodeToString(hash[:])
+}
+
+func (r Room) Distance(to Room) int64 {
+	distanceX := r.Coordinates.X - to.Coordinates.X
+	distanceY := r.Coordinates.Y - to.Coordinates.Y
+	distanceZ := r.Coordinates.Z - to.Coordinates.Z
+	return distanceX + distanceY + distanceZ
+}
+
+func (r *Room) Shift(direction Direction) {
+	r.Coordinates.Shift(direction)
 }

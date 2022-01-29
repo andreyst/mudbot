@@ -30,4 +30,9 @@ func (p *Parser) Parse(bytes []byte) {
 	if hasMoved {
 		p.atlas.RecordMovement(dir)
 	}
+
+	roomId, shiftDir, isShift := p.ParseShift(s)
+	if isShift {
+		p.atlas.Shift(roomId, shiftDir)
+	}
 }

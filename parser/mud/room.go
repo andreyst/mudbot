@@ -12,7 +12,7 @@ var roomItemsMarker = "\x1b[1;33m"
 var roomMobsMarker = "\x1b[1;31m"
 var roomMobsEndMarker = "\x1b[0;0m"
 
-func (p *Parser) ParseRoom(s string) (room atlas.Room, matched bool) {
+func (p *Parser) ParseRoom(s string) (room *atlas.Room, matched bool) {
 	if !botutil.HasLinePrefix(s, prRoomExits) {
 		return
 	}

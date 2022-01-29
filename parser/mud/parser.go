@@ -28,7 +28,7 @@ func (p *Parser) Parse(bytes []byte) {
 
 	room, matchedRoom := p.ParseRoom(s)
 	if matchedRoom {
-		p.atlas.RecordRoom(&room)
+		p.atlas.RecordRoom(room)
 	}
 
 	events := p.ParseFeedback(s)

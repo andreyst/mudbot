@@ -20,3 +20,14 @@ func TestCoordinates_AddDir(t *testing.T) {
 
 	assert.Equal(t, Coordinates{X: -1, Y: 1, Z: -1}, c)
 }
+
+func TestCoordinates_Shift(t *testing.T) {
+	c := Coordinates{}
+	c.Shift(DIRECTION_NORTH)
+	c.Shift(DIRECTION_EAST)
+	c.Shift(DIRECTION_DOWN)
+	c.Shift(DIRECTION_DOWN)
+	assert.Equal(t, int64(-1), c.Y)
+	assert.Equal(t, int64(1), c.X)
+	assert.Equal(t, int64(-2), c.Z)
+}
