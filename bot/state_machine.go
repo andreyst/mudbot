@@ -27,6 +27,7 @@ func (b *Bot) ProcessEvent(e Event) {
 			b.SendToMud("1")
 		case EVENT_PROMPT:
 			b.SendToMud("score")
+			b.SendToMud("look")
 			b.SwitchState(STATE_IDLE)
 		}
 	case STATE_IDLE:
