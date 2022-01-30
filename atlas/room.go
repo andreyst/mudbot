@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"errors"
+	"mudbot/botutil"
 	"sort"
 	"strings"
 )
@@ -15,6 +16,8 @@ type Room struct {
 	Name        string
 	Description string
 	PartialInfo bool
+
+	IsTricky bool
 
 	Exits map[Direction]int64
 	Items []string
@@ -59,9 +62,9 @@ func (r Room) Shorthand() string {
 }
 
 func (r Room) Distance(to Room) int64 {
-	distanceX := r.Coordinates.X - to.Coordinates.X
-	distanceY := r.Coordinates.Y - to.Coordinates.Y
-	distanceZ := r.Coordinates.Z - to.Coordinates.Z
+	distanceX := botutil.Abs(r.Coordinates.X - to.Coordinates.X)
+	distanceY := botutil.Abs(r.Coordinates.Y - to.Coordinates.Y)
+	distanceZ := botutil.Abs(r.Coordinates.Z - to.Coordinates.Z)
 	return distanceX + distanceY + distanceZ
 }
 

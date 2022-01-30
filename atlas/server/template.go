@@ -1,4 +1,4 @@
-package atlas
+package server
 
 import (
 	_ "embed"
@@ -7,10 +7,11 @@ import (
 	"os"
 )
 
+// Relative to binary workdir
 var devTplFilename = "./static/atlas_tpl.html"
 var devTplDoNotRead bool
 
-func getDevTpl() (devTpl string, err error) {
+func (s *Server) getDevTpl() (devTpl string, err error) {
 	var devTplExists bool
 	devTplExists, err = botutil.Exists(devTplFilename)
 	if err != nil {
@@ -31,16 +32,13 @@ func getDevTpl() (devTpl string, err error) {
 	return
 }
 
-func (a Atlas) getHtmlTemplate() string {
-	tpl, devTplErr := getDevTpl()
+func (s *Server) getHtmlTemplate() string {
+	tpl, devTplErr := s.getDevTpl()
 	if devTplErr != nil {
-		a.logger.Errorf("Cannot check dev tpl existence: %v", devTplErr)
+		s.logger.Errorf("Cannot check dev tpl existence: %v", devTplErr)
 	} else if tpl == "" {
 		tpl = static.AtlasHtmlTpl
 	}
-
-	//res := strings.ReplaceAll(tpl, "{rooms}", string(roomsJson))
-	//res = strings.ReplaceAll(res, "{currentCoordinates}", string(currentCoordinatesJson))
 
 	return tpl
 }

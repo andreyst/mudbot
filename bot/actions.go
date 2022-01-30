@@ -5,7 +5,7 @@ func (b *Bot) Drink() {
 }
 
 func (b *Bot) Eat() {
-	b.SendToMud("есть отик")
+	b.SendToMud("есть хлеб")
 }
 
 func (b *Bot) Stand() {

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"mudbot/atlas"
 	"mudbot/bot"
@@ -36,7 +37,8 @@ func NewApp(localAddr string, remoteAddr string) *App {
 		logger.Fatalf("PASSWORD env var missing")
 	}
 
-	a := atlas.NewAtlas(true)
+	a := atlas.NewAtlas()
+	a.StartServer()
 
 	b := bot.NewBot(bot.Credentials{
 		Login:    login,
@@ -94,7 +96,11 @@ func (app *App) Start() {
 			if atlasSeekErr != nil {
 				panic(err)
 			}
-			_, atlasWriteErr := atlasFo.Write([]byte(fmt.Sprintf("%+v", app.atlas)))
+			atlasJson, atlasMarshalErr := json.Marshal(app.atlas)
+			if atlasMarshalErr != nil {
+				panic(err)
+			}
+			_, atlasWriteErr := atlasFo.Write(atlasJson)
 			if atlasWriteErr != nil {
 				panic(err)
 			}

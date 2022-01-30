@@ -9,7 +9,8 @@ import (
 type Direction int
 
 const (
-	DIRECTION_NORTH Direction = iota
+	DIRECTION_UNKNOWN Direction = iota
+	DIRECTION_NORTH
 	DIRECTION_SOUTH
 	DIRECTION_WEST
 	DIRECTION_EAST
@@ -17,23 +18,27 @@ const (
 	DIRECTION_DOWN
 )
 
-func NewDirection(s string) Direction {
+func NewDirection(s string) (dir Direction, ok bool) {
+	ok = true
+
 	switch strings.ToUpper(s) {
 	case "N":
-		return DIRECTION_NORTH
+		dir = DIRECTION_NORTH
 	case "S":
-		return DIRECTION_SOUTH
+		dir = DIRECTION_SOUTH
 	case "W":
-		return DIRECTION_WEST
+		dir = DIRECTION_WEST
 	case "E":
-		return DIRECTION_EAST
+		dir = DIRECTION_EAST
 	case "U":
-		return DIRECTION_UP
+		dir = DIRECTION_UP
 	case "D":
-		return DIRECTION_DOWN
+		dir = DIRECTION_DOWN
 	default:
-		panic(errors.New("unknown direction str: " + s))
+		ok = false
 	}
+
+	return
 }
 
 func (d Direction) String() string {
@@ -75,9 +80,14 @@ func (d Direction) Opposite() Direction {
 }
 
 func (d *Direction) UnmarshalText(bytes []byte) error {
-	//d_tmp := NewDirection(string(bytes))
-	*d = NewDirection(string(bytes))
-	//d = NewDirection(string(bytes))
+	s := string(bytes)
+	dir, ok := NewDirection(s)
+	if !ok {
+		return errors.New(fmt.Sprintf("Unknown direction %v", s))
+
+	}
+
+	*d = dir
 	return nil
 }
 

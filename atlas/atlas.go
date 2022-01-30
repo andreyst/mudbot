@@ -5,6 +5,7 @@ package atlas
 
 import (
 	"go.uber.org/zap"
+	"mudbot/atlas/server"
 	"mudbot/botutil"
 )
 
@@ -19,12 +20,12 @@ type Atlas struct {
 
 	movements []Direction
 
-	server *Server
+	server *server.Server
 
 	logger *zap.SugaredLogger
 }
 
-func NewAtlas(startServer bool) *Atlas {
+func NewAtlas() *Atlas {
 	a := Atlas{
 		Rooms:              make(map[int64]*Room),
 		nextRoomId:         1,
@@ -33,15 +34,15 @@ func NewAtlas(startServer bool) *Atlas {
 		logger:             botutil.NewLogger("atlas"),
 	}
 
-	a.server = NewServer(func() (map[int64]*Room, Coordinates, *Room) {
-		return a.Rooms, a.Coordinates, a.lastRoom
-	})
-
-	if startServer {
-		a.server.Start(a)
-	}
+	a.server = server.NewServer(a.dataProvider)
+	a.server.OnDelete = a.onDelete
+	a.server.OnShift = a.onShift
 
 	return &a
+}
+
+func (a *Atlas) StartServer() {
+	a.server.Start()
 }
 
 func (a *Atlas) RecordMovement(dir Direction) {
@@ -112,56 +113,78 @@ func (a *Atlas) RecordRoom(room *Room) {
 			// Do we have a linked exit from last room corresponding to where we went?
 			roomIdByExit, hasExit := a.lastRoom.Exits[from.Opposite()]
 			if !hasExit || roomIdByExit == 0 {
-				// There is no linked exit. Let's find if we already know about a room
-				// we can last one to.
-				a.logger.Debugf("No linked exit, looking for candidate room")
-				roomByCoordinates, hasRoomByCoordinates := a.roomsByCoordinates[a.Coordinates]
-				var checkByShorthand bool
-				if hasRoomByCoordinates {
-					// There is such a room by coordinates. Let's check
-					// if its corresponding exit is already linked.
-					a.logger.Debugf("Found room by coordinates")
-					roomByCoordinatesExit := roomByCoordinates.Exits[from]
-					if roomByCoordinatesExit == 0 {
-						// It does not have a linked corresponding exit. Let's use it.
-						room = roomByCoordinates
-						a.Coordinates = room.Coordinates
-						a.lastRoom.Exits[from.Opposite()] = room.Id
-						exitRoomId, hasExit := room.Exits[from]
-						if hasExit && exitRoomId == 0 {
-							room.Exits[from] = a.lastRoom.Id
-						}
-					} else {
-						// It already has a linked corresponding exit. Let's create a new room.
-						a.logger.Debugf("But it already has linked corresponding exit, creating new")
-						checkByShorthand = true
-					}
-				} else {
-					checkByShorthand = true
-				}
-
-				if checkByShorthand {
-					// Let's see if there are rooms by shorthand.
-					// Due to duplicate rooms there is a high chance
-					// that one of them will be picked by shorthand instead of
-					// creating new. To mitigate this, let's say that
-					// there should be only one room by shorthand.
-					roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
-					if hasRoomByShorthand && len(roomsByShorthand) == 1 {
-						roomByShorthand := roomsByShorthand[0]
-						_, hasRoomByShorthandExit := roomByShorthand.Exits[from]
-						if hasRoomByShorthandExit ||
-							roomByShorthand.Id == a.lastRoom.Id {
-							a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
-							createRoom = true
-						} else {
-							a.logger.Debugf("Found room by shorthand, using it")
-							room = roomByShorthand
+				// There is no linked exit. Was last room tricky?
+				if !a.lastRoom.IsTricky {
+					// Last room was not tricky. Let's try to find by coordinates
+					// or by shorthand with more strict matching rules.
+					a.logger.Debugf("No linked exit, looking for candidate room")
+					roomByCoordinates, hasRoomByCoordinates := a.roomsByCoordinates[a.Coordinates]
+					var checkByShorthand bool
+					if hasRoomByCoordinates && roomByCoordinates.Shorthand() == room.Shorthand() {
+						// There is such a room by coordinates. Let's check
+						// if its corresponding exit is already linked.
+						a.logger.Debugf("Found room by coordinates")
+						roomByCoordinatesExit := roomByCoordinates.Exits[from]
+						if roomByCoordinatesExit == 0 {
+							// It does not have a linked corresponding exit. Let's use it.
+							room = roomByCoordinates
 							a.Coordinates = room.Coordinates
 							a.lastRoom.Exits[from.Opposite()] = room.Id
+							exitRoomId, hasExit := room.Exits[from]
+							if hasExit && exitRoomId == 0 {
+								room.Exits[from] = a.lastRoom.Id
+							}
+						} else {
+							// It already has a linked corresponding exit. Let's create a new room.
+							a.logger.Debugf("But it already has linked corresponding exit, creating new")
+							checkByShorthand = true
 						}
 					} else {
-						a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
+						checkByShorthand = true
+					}
+
+					if checkByShorthand {
+						// Let's see if there are rooms by shorthand.
+						// Due to duplicate rooms there is a high chance
+						// that one of them will be picked by shorthand instead of
+						// creating new. To mitigate this, let's say that
+						// there should be only one room by shorthand.
+						roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
+						if hasRoomByShorthand && len(roomsByShorthand) == 1 {
+							roomByShorthand := roomsByShorthand[0]
+							_, hasRoomByShorthandExit := roomByShorthand.Exits[from]
+							if hasRoomByShorthandExit ||
+								roomByShorthand.Id == a.lastRoom.Id {
+								a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
+								createRoom = true
+							} else {
+								a.logger.Debugf("Found room by shorthand, using it")
+								room = roomByShorthand
+								a.Coordinates = room.Coordinates
+								a.lastRoom.Exits[from.Opposite()] = room.Id
+							}
+						} else {
+							a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
+							createRoom = true
+						}
+					}
+				} else {
+					// Last room was tricky. Look for new room by shorthand
+					// with more relaxed matching rules - because last room was tricky,
+					// it could lead anywhere.
+					roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
+					if hasRoomByShorthand && len(roomsByShorthand) == 1 {
+						a.logger.Debugf("Found room by shorthand, using it")
+						room = roomsByShorthand[0]
+						a.Coordinates = room.Coordinates
+						a.lastRoom.Exits[from.Opposite()] = room.Id
+
+						if !room.IsTricky {
+							a.logger.Debugf("Marking it as tricky because moved from tricky room not by coords")
+							room.IsTricky = true
+						}
+					} else {
+						a.logger.Debugf("No room by shorthand found, creating new")
 						createRoom = true
 					}
 				}
@@ -180,57 +203,71 @@ func (a *Atlas) RecordRoom(room *Room) {
 					// exit changed due to trigger, relocation event, and so on.
 					// Let's try to find if we already know about the room we went to.
 					a.logger.Errorf("Room by exit does not equal actual room")
-					// TODO: Mark exit as astraying
 
 					// TODO: Redo for multiple rooms by shorthand
-					roomByShorthand, hasRoomByShorthand := a.findByShorthand(room.Shorthand())
-					if !hasRoomByShorthand {
+					roomsByShorthand, hasRoomsByShorthand := a.roomsByShorthand[room.Shorthand()]
+					if !hasRoomsByShorthand {
 						// There is no such room. Let's create it.
 						a.logger.Debugf("Did not find room by shorthand")
 						createRoom = true
-					} else {
-						// There is such room. Does it have an unlinked exit corresponding
-						// with movement direction
-						roomByShorthandExit := roomByShorthand.Exits[from]
-						if roomByShorthandExit == 0 {
-							// There is no linked corresponding exit - lets think that we moved to this room.
-							// TODO: Redo to picking closest room by shorthand
-							//var closestRoomByShorthand *Room
-							//for _, roomByShorthand := range roomsByShorthand {
-							//	roomByShorthandExit := roomByShorthand.Exits[from]
-							//	if roomByShorthandExit > 0 {
-							//		continue
-							//	}
-							//	if closestRoomByShorthand == nil ||
-							//		a.lastRoom.Distance(*closestRoomByShorthand) > a.lastRoom.Distance(*roomByShorthand) {
-							//		closestRoomByShorthand = roomByShorthand
-							//	}
-							//}
-
-							a.logger.Debugf("Found room by shorthand without linked corresponding exit")
-							room = roomByShorthand
-							a.Coordinates = room.Coordinates
-							a.lastRoom.Exits[from.Opposite()] = room.Id
-							// Not linking back, though.
-						} else {
-							// There is no exit or it is not empty.
-							// TODO: What about multiple rooms leading to single non-adjacent room? Or via one ways.
-							a.logger.Debugf("Room by shorthand did not have empty corresponding exit")
-							createRoom = true
+					} else if len(roomsByShorthand) == 1 {
+						a.logger.Debugf("Found room by shorthand, marking last room as tricky because existing exit lead to unexpected room")
+						room = roomsByShorthand[0]
+						a.Coordinates = room.Coordinates
+						a.lastRoom.Exits[from.Opposite()] = room.Id
+						roomExit, roomHasExit := room.Exits[from.Opposite()]
+						if roomHasExit && roomExit > 0 {
+							room.Exits[from.Opposite()] = a.lastRoom.Id
 						}
+					} else {
+						a.logger.Debugf("Room by shorthand was not tricky")
+						createRoom = true
 					}
+
+					// There is such room. Does it have an unlinked exit corresponding
+					// with movement direction
+					//roomByShorthandExit, hasRoomByShorthandExit := roomByShorthand.Exits[from]
+					//if !hasRoomByShorthandExit {
+					//	// There is no exit at all. Is this room we went to tricky?
+					//} else if roomByShorthandExit == 0 {
+					//	// There is no linked corresponding exit - lets think that we moved to this room.
+					//	// TODO: Redo to picking closest room by shorthand
+					//	//var closestRoomByShorthand *Room
+					//	//for _, roomByShorthand := range roomsByShorthand {
+					//	//	roomByShorthandExit := roomByShorthand.Exits[from]
+					//	//	if roomByShorthandExit > 0 {
+					//	//		continue
+					//	//	}
+					//	//	if closestRoomByShorthand == nil ||
+					//	//		a.lastRoom.Distance(*closestRoomByShorthand) > a.lastRoom.Distance(*roomByShorthand) {
+					//	//		closestRoomByShorthand = roomByShorthand
+					//	//	}
+					//	//}
+					//
+					//	a.logger.Debugf("Found room by shorthand without linked corresponding exit")
+					//	room = roomByShorthand
+					//	a.Coordinates = room.Coordinates
+					//	a.lastRoom.Exits[from.Opposite()] = room.Id
+					//	// Not linking back, though.
+					//} else {
+					//	// There is a linked exit.
+					//	// TODO: What about multiple rooms leading to single non-adjacent room? Or via one ways.
+					//	a.logger.Debugf("Room by shorthand did not have empty corresponding exit")
+					//	createRoom = true
+					//}
+					//}
 				}
 			}
 		}
 
 		// TODO: Remove previous version
-		//if a.lastRoom != nil && !a.lastRoom.IsAstraying {
+		//if a.lastRoom != nil && !a.lastRoom.IsTricky {
 		//	roomByCoordinates, hasRoomByCoordinates := a.roomsByCoordinates[a.Coordinates]
 		//
 		//	if !hasRoomByCoordinates {
 		//		roomByShorthand, hasRoomByShorthand := a.findByShorthand(room.Shorthand())
-		//		if hasRoomByShorthand && roomByShorthand.IsAstraying {
-		//			a.logger.Errorf("No room by coordinates but found astraying room by shorthand")
+		//		if hasRoomByShorthand && roomByShorthand.IsTricky {
+		//			a.logger.Errorf("No room by coordinates but found tricky room by shorthand")
 		//			room = roomByShorthand
 		//			a.Coordinates = room.Coordinates
 		//		}
@@ -254,9 +291,9 @@ func (a *Atlas) RecordRoom(room *Room) {
 		//		room = roomByShorthand
 		//		a.Coordinates = room.Coordinates
 		//		if a.lastRoom != nil {
-		//			if !room.IsAstraying {
-		//				a.logger.Debugf("Marking current room as astraying because moved from previous room not by coords")
-		//				room.IsAstraying = true
+		//			if !room.IsTricky {
+		//				a.logger.Debugf("Marking current room as tricky because moved from previous room not by coords")
+		//				room.IsTricky = true
 		//			}
 		//			a.lastRoom.Exits[from.Opposite()] = room.Id
 		//		}
@@ -286,9 +323,9 @@ func (a *Atlas) RecordRoom(room *Room) {
 					if _, ok := room.Exits[from]; ok {
 						room.Exits[from] = a.lastRoom.Id
 					} else {
-						//a.logger.Debugf("Marking new and previous rooms %v as astraying because of mismatching exits", room.Id)
-						//room.IsAstraying = true
-						//a.lastRoom.IsAstraying = true
+						a.logger.Debugf("Marking new and previous rooms %v as tricky because of mismatching exits", room.Id)
+						room.IsTricky = true
+						a.lastRoom.IsTricky = true
 						a.logger.Debugf("%+v", a.Rooms[room.Id])
 					}
 					a.logger.Debugf("Linked room %+v with %v (%v)", a.lastRoom.Name, room.Name, from.Opposite())
@@ -303,7 +340,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 		a.lastRoom = nil
 	}
 
-	a.server.sendUpdates()
+	a.server.SendData()
 }
 
 func (a *Atlas) RecordCannotMoveFeedback() {
@@ -334,7 +371,7 @@ func (a *Atlas) Shift(roomId int64, direction Direction) {
 	a.logger.Debugf("Shifting room %v %v", roomId, direction)
 	visited := make(map[int64]bool)
 	a.doShift(roomId, direction, &visited)
-	a.server.sendUpdates()
+	a.server.SendData()
 }
 
 func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bool) {
@@ -348,7 +385,10 @@ func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bo
 		if exitDir == direction.Opposite() || exitRoomId == 0 {
 			continue
 		}
-		a.doShift(exitRoomId, direction, visited)
+		if exitDir != direction || room.Distance(*a.Rooms[exitRoomId]) == 1 {
+			// Do not move in required direction if there is space
+			a.doShift(exitRoomId, direction, visited)
+		}
 	}
 
 	delete(a.roomsByCoordinates, room.Coordinates)
@@ -361,4 +401,36 @@ func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bo
 
 	room.Shift(direction)
 	a.roomsByCoordinates[room.Coordinates] = room
+}
+
+func (a *Atlas) dataProvider() interface{} {
+	data := struct {
+		Rooms       map[int64]*Room
+		Coordinates Coordinates
+		Room        *Room
+	}{
+		a.Rooms,
+		a.Coordinates,
+		a.lastRoom,
+	}
+
+	return data
+}
+
+func (a *Atlas) Delete(roomId int64) {
+
+}
+
+func (a *Atlas) onDelete(command server.DeleteCommand) {
+
+}
+
+func (a *Atlas) onShift(cmd server.ShiftCommand) {
+	dir, ok := NewDirection(cmd.Direction)
+	if !ok {
+		a.logger.Infof("Wrong direction in shift command, expected one of directions in NewDirection(): %v", cmd.Direction)
+		return
+	}
+
+	a.Shift(int64(cmd.RoomId), dir)
 }

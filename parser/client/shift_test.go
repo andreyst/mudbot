@@ -7,17 +7,17 @@ import (
 )
 
 func TestParser_ParseShift(t *testing.T) {
-	a := atlas.NewAtlas(false)
+	a := atlas.NewAtlas()
 	p := NewParser(a)
 
 	{
-		roomId, direction, ok := p.ParseShift("/shift 99 S")
+		roomId, direction, ok := p.ParseShift("/map shift 99 S")
+		assert.True(t, ok)
 		assert.Equal(t, int64(99), roomId)
 		assert.Equal(t, atlas.DIRECTION_SOUTH, direction)
-		assert.True(t, ok)
 	}
 	{
-		_, _, ok := p.ParseShift("/shift 99 ???")
+		_, _, ok := p.ParseShift("/map shift 99 ???")
 		assert.False(t, ok)
 	}
 	{

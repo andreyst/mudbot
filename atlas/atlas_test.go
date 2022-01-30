@@ -6,18 +6,18 @@ import (
 )
 
 func TestAtlas_RecordRoomDoesNotCrashWithoutMovement(t *testing.T) {
-	a := NewAtlas(false)
+	a := NewAtlas()
 	r := Room{}
 	a.RecordRoom(&r)
 }
 
 func TestAtlas_RecordCannotMoveFeedbackDoesNotCrashWithoutMovement(t *testing.T) {
-	a := NewAtlas(false)
+	a := NewAtlas()
 	a.RecordCannotMoveFeedback()
 }
 
 func TestAtlas_Shift(t *testing.T) {
-	atlas := NewAtlas(false)
+	atlas := NewAtlas()
 
 	var room *Room
 

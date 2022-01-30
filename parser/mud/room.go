@@ -32,7 +32,12 @@ func (p *Parser) ParseRoom(s string) (room *atlas.Room, matched bool) {
 		roomExistsStrArr := strings.Split(roomExitsStr, " ")
 		for _, roomExitStr := range roomExistsStrArr {
 			roomExitStrCanonical := p.CanonizeExit(roomExitStr)
-			room.Exits[atlas.NewDirection(roomExitStrCanonical)] = 0
+			dir, dirOk := atlas.NewDirection(roomExitStrCanonical)
+			if !dirOk {
+				p.logger.Debugf("Unknown direction %v in room, skipping", roomExitStrCanonical)
+				continue
+			}
+			room.Exits[dir] = 0
 		}
 	}
 

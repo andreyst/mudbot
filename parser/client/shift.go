@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-var shiftMatcher = regroup.MustCompile(`/shift (?P<RoomId>\d+) (?P<Direction>[NSWEUD])`)
+var shiftMatcher = regroup.MustCompile(`/map shift (?P<RoomId>\d+) (?P<Direction>[NSWEUD])`)
 
 func (p *Parser) ParseShift(s string) (roomId int64, direction atlas.Direction, ok bool) {
 	match, _ := shiftMatcher.Groups(s)
@@ -15,8 +15,15 @@ func (p *Parser) ParseShift(s string) (roomId int64, direction atlas.Direction, 
 	}
 
 	ok = true
-	roomId, _ = strconv.ParseInt(match["RoomId"], 10, 64)
-	direction = atlas.NewDirection(match["Direction"])
+	var parseIntErr error
+	roomId, parseIntErr = strconv.ParseInt(match["RoomId"], 10, 64)
+	if parseIntErr != nil {
+		p.logger.Debugf("Cannot parse int: %v", match["RoomId"])
+		ok = false
+		return
+	}
+
+	direction, ok = atlas.NewDirection(match["Direction"])
 
 	return
 }

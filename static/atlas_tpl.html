@@ -103,9 +103,14 @@
     let currentCoordinates = {"X":0, "Y":0, "Z": 0}
     let room = {}
 
+    let state = {
+        level: 0,
+        socket: undefined
+    }
+
     function connect() {
-        let socket = new WebSocket("ws://localhost:3773/rooms");
-        socket.onmessage = function (event) {
+        state.socket = new WebSocket("ws://localhost:3773/ws");
+        state.socket.onmessage = function (event) {
             let payload = {}
             try {
                 payload = JSON.parse(event.data)
@@ -118,28 +123,22 @@
 
             currentCoordinates = payload.Coordinates
             room = payload.Room
-            level = currentCoordinates["Z"]
+            state.level = currentCoordinates["Z"]
             updateRooms(payload.Rooms)
         };
-        socket.onclose = function(event) {
+        state.socket.onclose = function(event) {
             console.info("websocket closed, reconnecting...")
             setTimeout(connect, 1000)
         }
     }
 
-    connect()
-
-    let xOffset = 0
-    let yOffset = 0
-    let level = 0
-
     function goUp() {
-        level++
+        state.level++
         drawMap()
     }
 
     function goDown() {
-        level--
+        state.level--
         drawMap()
     }
 
@@ -152,13 +151,13 @@
 
         node.find(".room").on('mouseover', function() {
             for (let room of Object.values(rooms)) {
-                if (x == room.Coordinates["X"] && y == room.Coordinates["Y"] && level == room.Coordinates["Z"]) {
+                if (x == room.Coordinates["X"] && y == room.Coordinates["Y"] && state.level == room.Coordinates["Z"]) {
                     console.log(room)
                 }
             }
         })
 
-        if (x == currentCoordinates["X"] && y == currentCoordinates["Y"] && level == currentCoordinates["Z"]) {
+        if (x == currentCoordinates["X"] && y == currentCoordinates["Y"] && state.level == currentCoordinates["Z"]) {
             node.find(".room").addClass("current")
         }
 
@@ -187,7 +186,7 @@
         zeroY = Math.round(mapHeight / 2 - roomSize / 2)
 
         for (let room of Object.values(rooms)) {
-            if (room.Coordinates.Z !== level) continue
+            if (room.Coordinates.Z !== state.level) continue
 
             let roomCoordsStr = `${room.Coordinates.X}_${room.Coordinates.Y}_${room.Coordinates.Z}`
             let counter = ""
@@ -241,6 +240,29 @@
 
         return res
     }
+
+    function sendShift(roomId, direction) {
+        let msg = JSON.stringify({
+            "Command": "shift",
+            "ShiftCommand": {
+                "RoomId": roomId,
+                "Direction": direction,
+            }
+        })
+        state.socket.send(msg)
+    }
+
+    function sendDelete(roomId) {
+        let msg = JSON.stringify({
+            "Command": "delete",
+            "DeleteCommand": {
+                "RoomId": roomId,
+            }
+        })
+        state.socket.send(msg)
+    }
+
+    connect()
 
 </script>
 </body>
