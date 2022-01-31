@@ -33,6 +33,6 @@ func (p *Parser) Parse(bytes []byte) {
 
 	roomId, shiftDir, isShift := p.ParseShift(s)
 	if isShift {
-		p.atlas.Shift(roomId, shiftDir)
+		p.atlas.ShiftRoom(roomId, shiftDir)
 	}
 }

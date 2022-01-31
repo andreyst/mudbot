@@ -65,7 +65,7 @@ func TestAtlas_Shift(t *testing.T) {
 		yBefore[int64(i)] = atlas.Rooms[int64(i)].Coordinates.Y
 	}
 
-	atlas.Shift(2, DIRECTION_NORTH)
+	atlas.ShiftRoom(2, DIRECTION_NORTH)
 
 	for i := 1; i < len(atlas.Rooms)+1; i++ {
 		assert.Equal(t, yBefore[int64(i)]-1, atlas.Rooms[int64(i)].Coordinates.Y)

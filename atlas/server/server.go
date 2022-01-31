@@ -14,8 +14,8 @@ type AtlasDataProvider func() interface{}
 type Server struct {
 	atlasDataProvider AtlasDataProvider
 
-	OnShift  func(ShiftCommand)
-	OnDelete func(DeleteCommand)
+	OnShiftRoom  func(ShiftRoomCommand)
+	OnDeleteRoom func(DeleteRoomCommand)
 
 	chNum       int
 	updateChans map[int]chan interface{}
@@ -30,14 +30,15 @@ func NewServer(atlasDataProvider AtlasDataProvider) *Server {
 	s := Server{
 		atlasDataProvider: atlasDataProvider,
 
-		OnShift:  func(cmd ShiftCommand) {},
-		OnDelete: func(cmd DeleteCommand) {},
-
 		updateChans: make(map[int]chan interface{}),
 		closeChans:  make(map[int]chan interface{}),
 
 		logger: botutil.NewLogger("atlas_server"),
 	}
+
+	nopCommandHandler := func() { s.logger.Info("Calling nop command handler") }
+	s.OnShiftRoom = func(cmd ShiftRoomCommand) { nopCommandHandler() }
+	s.OnDeleteRoom = func(cmd DeleteRoomCommand) { nopCommandHandler() }
 
 	return &s
 }

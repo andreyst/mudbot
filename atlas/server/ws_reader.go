@@ -6,17 +6,17 @@ import (
 )
 
 type Message struct {
-	Command       string
-	ShiftCommand  *ShiftCommand  `json:",omitempty"`
-	DeleteCommand *DeleteCommand `json:",omitempty"`
+	Command           string
+	ShiftRoomCommand  *ShiftRoomCommand  `json:",omitempty"`
+	DeleteRoomCommand *DeleteRoomCommand `json:",omitempty"`
 }
 
-type ShiftCommand struct {
+type ShiftRoomCommand struct {
 	RoomId    int
 	Direction string
 }
 
-type DeleteCommand struct {
+type DeleteRoomCommand struct {
 	RoomId int
 }
 
@@ -50,17 +50,17 @@ func (s *Server) parseClientMessage(msgBytes []byte) {
 	}
 
 	switch message.Command {
-	case "shift":
-		if message.ShiftCommand == nil {
+	case "shift_room":
+		if message.ShiftRoomCommand == nil {
 			s.logger.Infof("No command payload from client")
 		} else {
-			s.OnShift(*message.ShiftCommand)
+			s.OnShiftRoom(*message.ShiftRoomCommand)
 		}
-	case "delete":
-		if message.DeleteCommand == nil {
+	case "delete_room":
+		if message.DeleteRoomCommand == nil {
 			s.logger.Infof("No command payload from client")
 		} else {
-			s.OnDelete(*message.DeleteCommand)
+			s.OnDeleteRoom(*message.DeleteRoomCommand)
 		}
 	default:
 		s.logger.Infof("Unknown command from client: %v", message.Command)

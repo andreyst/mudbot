@@ -241,10 +241,10 @@
         return res
     }
 
-    function sendShift(roomId, direction) {
+    function sendShiftRoom(roomId, direction) {
         let msg = JSON.stringify({
-            "Command": "shift",
-            "ShiftCommand": {
+            "Command": "shift_room",
+            "ShiftRoomCommand": {
                 "RoomId": roomId,
                 "Direction": direction,
             }
@@ -252,10 +252,10 @@
         state.socket.send(msg)
     }
 
-    function sendDelete(roomId) {
+    function sendDeleteRoom(roomId) {
         let msg = JSON.stringify({
-            "Command": "delete",
-            "DeleteCommand": {
+            "Command": "delete_room",
+            "DeleteRoomCommand": {
                 "RoomId": roomId,
             }
         })

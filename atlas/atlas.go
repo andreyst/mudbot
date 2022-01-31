@@ -15,7 +15,7 @@ type Atlas struct {
 	Rooms              map[int64]*Room
 	Coordinates        Coordinates
 	nextRoomId         int64
-	roomsByShorthand   map[string][]*Room
+	roomsByShorthand   map[string]map[int64]*Room
 	roomsByCoordinates map[Coordinates]*Room
 
 	movements []Direction
@@ -29,14 +29,14 @@ func NewAtlas() *Atlas {
 	a := Atlas{
 		Rooms:              make(map[int64]*Room),
 		nextRoomId:         1,
-		roomsByShorthand:   make(map[string][]*Room),
+		roomsByShorthand:   make(map[string]map[int64]*Room),
 		roomsByCoordinates: make(map[Coordinates]*Room),
 		logger:             botutil.NewLogger("atlas"),
 	}
 
 	a.server = server.NewServer(a.dataProvider)
-	a.server.OnDelete = a.onDelete
-	a.server.OnShift = a.onShift
+	a.server.OnShiftRoom = a.onShiftRoom
+	a.server.OnDeleteRoom = a.onDeleteRoom
 
 	return &a
 }
@@ -85,9 +85,9 @@ func (a *Atlas) RecordRoom(room *Room) {
 				createRoom = true
 			} else {
 				roomsByShorthand := a.roomsByShorthand[room.Shorthand()]
-				if len(a.roomsByShorthand) == 1 {
+				if len(roomsByShorthand) == 1 {
 					a.logger.Debugf("Found single room by shorthand, using it as current location")
-					room = roomsByShorthand[0]
+					room = getFirstRoom(roomsByShorthand)
 				} else {
 					a.logger.Debugf("Cannot find single room by shorthand, move to unambigious and record room to locate self")
 				}
@@ -104,7 +104,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 				roomsByShorthand := a.roomsByShorthand[room.Shorthand()]
 				if len(a.roomsByShorthand) == 1 {
 					a.logger.Debugf("Found single room by shorthand, using it as current location")
-					room = roomsByShorthand[0]
+					room = getFirstRoom(roomsByShorthand)
 				} else {
 					a.logger.Debugf("Cannot find single room by shorthand, move to unambigious and record room to locate self")
 				}
@@ -151,7 +151,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						// there should be only one room by shorthand.
 						roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
 						if hasRoomByShorthand && len(roomsByShorthand) == 1 {
-							roomByShorthand := roomsByShorthand[0]
+							roomByShorthand := getFirstRoom(roomsByShorthand)
 							_, hasRoomByShorthandExit := roomByShorthand.Exits[from]
 							if hasRoomByShorthandExit ||
 								roomByShorthand.Id == a.lastRoom.Id {
@@ -175,7 +175,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 					roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
 					if hasRoomByShorthand && len(roomsByShorthand) == 1 {
 						a.logger.Debugf("Found room by shorthand, using it")
-						room = roomsByShorthand[0]
+						room = getFirstRoom(roomsByShorthand)
 						a.Coordinates = room.Coordinates
 						a.lastRoom.Exits[from.Opposite()] = room.Id
 
@@ -212,7 +212,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						createRoom = true
 					} else if len(roomsByShorthand) == 1 {
 						a.logger.Debugf("Found room by shorthand, marking last room as tricky because existing exit lead to unexpected room")
-						room = roomsByShorthand[0]
+						room = getFirstRoom(roomsByShorthand)
 						a.Coordinates = room.Coordinates
 						a.lastRoom.Exits[from.Opposite()] = room.Id
 						roomExit, roomHasExit := room.Exits[from.Opposite()]
@@ -306,14 +306,16 @@ func (a *Atlas) RecordRoom(room *Room) {
 				a.logger.Errorf("Not creating room becuase it clashes with existing by coordinates, but have no movement to figure out where to shift it")
 			} else {
 				if hasExistingRoomByCoordinates {
-					a.Shift(existingRoomByCoordinates.Id, from.Opposite())
+					a.ShiftRoom(existingRoomByCoordinates.Id, from.Opposite())
 				}
 
 				room.Id = a.nextRoomId
 				a.nextRoomId++
 				a.Rooms[room.Id] = room
-				currentRoomsByShorthand, _ := a.roomsByShorthand[room.Shorthand()]
-				a.roomsByShorthand[room.Shorthand()] = append(currentRoomsByShorthand, room)
+				if a.roomsByShorthand[room.Shorthand()] == nil {
+					a.roomsByShorthand[room.Shorthand()] = make(map[int64]*Room)
+				}
+				a.roomsByShorthand[room.Shorthand()][room.Id] = room
 				a.roomsByCoordinates[room.Coordinates] = room
 
 				a.logger.Debugf("Created room %+v with id %v", room.Name, room.Id)
@@ -348,89 +350,4 @@ func (a *Atlas) RecordCannotMoveFeedback() {
 		a.movements = a.movements[1:]
 	}
 	a.logger.Debugf("Recorded cannot move feedback")
-}
-
-func (a *Atlas) findByShorthand(shorthand string) (res *Room, hasRoomByShorthand bool) {
-	roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[shorthand]
-	if hasRoomByShorthand {
-		res = roomsByShorthand[0]
-		if len(roomsByShorthand) > 1 {
-			a.logger.Errorf("Multiple rooms by shorthand found!")
-		}
-	}
-
-	return
-}
-
-func (a *Atlas) Shift(roomId int64, direction Direction) {
-	if _, roomExists := a.Rooms[roomId]; !roomExists {
-		a.logger.Errorf("Room %v does not exist", roomId)
-		return
-	}
-
-	a.logger.Debugf("Shifting room %v %v", roomId, direction)
-	visited := make(map[int64]bool)
-	a.doShift(roomId, direction, &visited)
-	a.server.SendData()
-}
-
-func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bool) {
-	if (*visited)[roomId] {
-		return
-	}
-	(*visited)[roomId] = true
-
-	room := a.Rooms[roomId]
-	for exitDir, exitRoomId := range room.Exits {
-		if exitDir == direction.Opposite() || exitRoomId == 0 {
-			continue
-		}
-		if exitDir != direction || room.Distance(*a.Rooms[exitRoomId]) == 1 {
-			// Do not move in required direction if there is space
-			a.doShift(exitRoomId, direction, visited)
-		}
-	}
-
-	delete(a.roomsByCoordinates, room.Coordinates)
-
-	newCoordinates := room.Coordinates
-	newCoordinates.Shift(direction)
-	if roomAtNewCoordinates, hasRoomAtNewCoordinates := a.roomsByCoordinates[newCoordinates]; hasRoomAtNewCoordinates {
-		a.doShift(roomAtNewCoordinates.Id, direction, visited)
-	}
-
-	room.Shift(direction)
-	a.roomsByCoordinates[room.Coordinates] = room
-}
-
-func (a *Atlas) dataProvider() interface{} {
-	data := struct {
-		Rooms       map[int64]*Room
-		Coordinates Coordinates
-		Room        *Room
-	}{
-		a.Rooms,
-		a.Coordinates,
-		a.lastRoom,
-	}
-
-	return data
-}
-
-func (a *Atlas) Delete(roomId int64) {
-
-}
-
-func (a *Atlas) onDelete(command server.DeleteCommand) {
-
-}
-
-func (a *Atlas) onShift(cmd server.ShiftCommand) {
-	dir, ok := NewDirection(cmd.Direction)
-	if !ok {
-		a.logger.Infof("Wrong direction in shift command, expected one of directions in NewDirection(): %v", cmd.Direction)
-		return
-	}
-
-	a.Shift(int64(cmd.RoomId), dir)
 }

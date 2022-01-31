@@ -10,7 +10,7 @@ func TestNewServer(t *testing.T) {
 	{
 		msg := Message{
 			Command: "wow",
-			ShiftCommand: &ShiftCommand{
+			ShiftRoomCommand: &ShiftRoomCommand{
 				RoomId:    111,
 				Direction: "S",
 			},
