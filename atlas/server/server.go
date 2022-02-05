@@ -14,8 +14,10 @@ type AtlasDataProvider func() interface{}
 type Server struct {
 	atlasDataProvider AtlasDataProvider
 
-	OnShiftRoom  func(ShiftRoomCommand)
-	OnDeleteRoom func(DeleteRoomCommand)
+	OnShiftRoom   func(ShiftRoomCommand)
+	OnDeleteRoom  func(DeleteRoomCommand)
+	OnLinkRooms   func(LinkRoomsCommand)
+	OnUnlinkRooms func(UnlinkRoomsCommand)
 
 	chNum       int
 	updateChans map[int]chan interface{}

@@ -30,35 +30,50 @@
         .room.current {
             border: 1px solid white;
         }
+        .room.highlight {
+            border: 1px solid cornflowerblue;
+        }
+        .room.selected {
+            background-color: chartreuse;
+        }
         .exit {
             position:  absolute;
-            background-color: transparent;
+            border: transparent;
         }
         .exit.S {
             background-color: white;
-            width:  1px;
-            height:  5px;
+            width: 2px;
+            height: 5px;
             bottom: 0;
             left: 15px;
         }
         .exit.N {
             background-color: white;
-            width: 1px;
+            width: 2px;
             height: 5px;
             top: 0;
             left: 15px;
         }
+        .exit:before {
+            content:'';
+            position:absolute;
+            top:-5px;
+            bottom:-5px;
+            left:-5px;
+            right:-5px;
+        }
+
         .exit.W {
             background-color: white;
             width: 5px;
-            height: 1px;
+            height: 2px;
             top: 15px;
             left: 0;
         }
         .exit.E {
             background-color: white;
             width: 5px;
-            height: 1px;
+            height: 2px;
             top: 15px;
             right: 0;
         }
@@ -84,6 +99,12 @@
         .exit.D::after {
             content:  "↓";
         }
+        .exit.highlight {
+            background-color: cornflowerblue;
+        }
+        .exit.tricky {
+            background-color: magenta;
+        }
 
     </style>
 </head>
@@ -102,10 +123,19 @@
     let rooms = {}
     let currentCoordinates = {"X":0, "Y":0, "Z": 0}
     let room = {}
+    let selectedRoomId = 0
 
     let state = {
         level: 0,
         socket: undefined
+    }
+
+    function heaviside(v) {
+        if (v === 0) {
+            return 0
+        } else {
+            return 1
+        }
     }
 
     function connect() {
@@ -142,37 +172,70 @@
         drawMap()
     }
 
-    function makeRoom(info, x, y, exits, counter) {
-        let node = $("<div class='room_cont'></div>").append(`<div class='room'>${counter}</div>`)
+    function selectRoom(roomId) {
+        $(".room.selected").removeClass("selected")
+        selectedRoomId = roomId
+        $(`.room[data-room-id="${roomId}"]`).addClass("selected")
+    }
+
+    function makeRoom(info, x, y, counter) {
+        let roomNode = $(`<div class='room' data-room-id='${info["Id"]}'>${counter}</div>`)
+        let node = $("<div class='room_cont'></div>").append(roomNode)
 
         let top  = zeroY+roomSize*(y-currentCoordinates["Y"])
         let left = zeroX+roomSize*(x-currentCoordinates["X"])
         node.css('top', `${top}px`).css('left', `${left}px`)
 
-        node.find(".room").on('mouseover', function() {
-            for (let room of Object.values(rooms)) {
-                if (x == room.Coordinates["X"] && y == room.Coordinates["Y"] && state.level == room.Coordinates["Z"]) {
-                    console.log(room)
-                }
-            }
+        roomNode.on("click", function(e) {
+            console.log(rooms[info["Id"]])
+            selectRoom(info["Id"])
+            e.stopPropagation()
         })
 
         if (x == currentCoordinates["X"] && y == currentCoordinates["Y"] && state.level == currentCoordinates["Z"]) {
             node.find(".room").addClass("current")
         }
 
-        if (exits.length) {
-            for (exit of exits) {
-                node.append(`<div class='exit ${exit}'></div>`)
+        for (let exit of Object.keys(info.Exits)) {
+            let roomToId = info.Exits[exit]
+            let roomTo = rooms[roomToId]
+            let exitNode = $(`<div class='exit ${exit}' data-to-room-id='${roomToId}'></div>`)
+
+            if (roomTo && (Math.abs(info.Coordinates["X"] - roomTo.Coordinates["X"]) +
+                Math.abs(info.Coordinates["Y"] - roomTo.Coordinates["Y"]) +
+                Math.abs(info.Coordinates["Z"] - roomTo.Coordinates["Z"]) > 1)) {
+                exitNode.addClass("tricky")
             }
+
+            node.append(exitNode)
+            exitNode.on('mouseover', function(e) {
+                exitNode.addClass('highlight')
+                // let toRoomId = $(e.target).attr('data-to-room-id')
+                // if (toRoomId > 0) {
+                    $(`.room[data-room-id="${roomToId}"]`).addClass('highlight')
+                // }
+
+            })
+            exitNode.on('mouseout', function(e) {
+                exitNode.removeClass('highlight')
+                // let toRoomId = $(e.target).attr('data-to-room-id')
+                // if (toRoomId > 0) {
+                    $(`.room[data-room-id="${roomToId}"]`).removeClass('highlight')
+                // }
+            })
         }
 
-        node.find(".exit.U").on('click', goUp)
-        node.find(".exit.D").on('click', goDown)
+        node.find(".exit.U").on("click", function(e) {
+            e.stopPropagation()
+            goUp()
+        })
+        node.find(".exit.D").on("click", function(e) {
+            e.stopPropagation()
+            goDown()
+        })
 
         return node
     }
-
 
     function drawMap() {
         let coordsCounts = {}
@@ -197,13 +260,20 @@
                 counter = coordsCounts[roomCoordsStr]
             }
 
-            map.append(makeRoom(room, room.Coordinates.X, room.Coordinates.Y, Object.keys(room.Exits), counter))
+            map.append(makeRoom(room, room.Coordinates.X, room.Coordinates.Y, counter))
+            if (room.Id === selectedRoomId) {
+                selectRoom(room.Id)
+            }
         }
 
     }
 
     function updateRooms(newRooms) {
         rooms = newRooms
+
+        if (!rooms.hasOwnProperty(selectedRoomId)) {
+            selectedRoomId = 0
+        }
 
         drawMap()
     }
@@ -261,6 +331,39 @@
         })
         state.socket.send(msg)
     }
+
+    $(document.body).on("click", function() {
+        selectedRoomId = 0
+        drawMap()
+    })
+
+    $(document.body).on('keydown', function(e) {
+        let ch = String.fromCharCode(e.which)
+        console.log("Selected room ID: ", selectedRoomId, typeof(selectedRoomId))
+        switch(e.key) {
+            case "n":
+                sendShiftRoom(selectedRoomId, "N")
+                break
+            case "s":
+                sendShiftRoom(selectedRoomId, "S")
+                break
+            case "w":
+                sendShiftRoom(selectedRoomId, "W")
+                break
+            case "e":
+                sendShiftRoom(selectedRoomId, "E")
+                break
+            case "u":
+                sendShiftRoom(selectedRoomId, "U")
+                break
+            case "d":
+                sendShiftRoom(selectedRoomId, "D")
+                break
+            case "Backspace": // Backspace
+                sendDeleteRoom(selectedRoomId)
+                break
+        }
+    })
 
     connect()
 

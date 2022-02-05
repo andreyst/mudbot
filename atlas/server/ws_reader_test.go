@@ -12,10 +12,7 @@ func TestServer_ParseClientMessageBadCommands(t *testing.T) {
 
 	var buf string
 
-	buf = `{"Command":""}`
-	s.parseClientMessage([]byte(buf))
-
-	buf = `{"Command":"shift_room"}`
+	buf = `{}`
 	s.parseClientMessage([]byte(buf))
 }
 
@@ -24,10 +21,10 @@ func TestServer_ParseClientMessageWithoutHandlers(t *testing.T) {
 
 	var buf string
 
-	buf = `{"Command":"shift_room", "ShiftRoomCommand":{"RoomId":1, "Direction":"N"}}`
+	buf = `{"ShiftRoomCommand":{"RoomId":1, "Direction":"N"}}`
 	s.parseClientMessage([]byte(buf))
 
-	buf = `{"Command":"delete_room", "DeleteRoomCommand":{"RoomId":1}}`
+	buf = `{"DeleteRoomCommand":{"RoomId":1}}`
 	s.parseClientMessage([]byte(buf))
 }
 
@@ -39,7 +36,6 @@ func TestServer_ParseClientMessage(t *testing.T) {
 		Direction: "W",
 	}
 	msg := Message{
-		Command:          "shift_room",
 		ShiftRoomCommand: &refCmd,
 	}
 	msgBytes, marshalErr := json.Marshal(msg)

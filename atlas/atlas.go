@@ -37,6 +37,8 @@ func NewAtlas() *Atlas {
 	a.server = server.NewServer(a.dataProvider)
 	a.server.OnShiftRoom = a.onShiftRoom
 	a.server.OnDeleteRoom = a.onDeleteRoom
+	a.server.OnLinkRooms = a.onLinkRooms
+	a.server.OnUnlinkRooms = a.onUnlinkRooms
 
 	return &a
 }
@@ -88,6 +90,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 				if len(roomsByShorthand) == 1 {
 					a.logger.Debugf("Found single room by shorthand, using it as current location")
 					room = getFirstRoom(roomsByShorthand)
+					a.Coordinates = room.Coordinates
 				} else {
 					a.logger.Debugf("Cannot find single room by shorthand, move to unambigious and record room to locate self")
 				}
@@ -153,6 +156,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						if hasRoomByShorthand && len(roomsByShorthand) == 1 {
 							roomByShorthand := getFirstRoom(roomsByShorthand)
 							_, hasRoomByShorthandExit := roomByShorthand.Exits[from]
+							// TODO: If roomByShorthand is tricky — maybe link to it
 							if hasRoomByShorthandExit ||
 								roomByShorthand.Id == a.lastRoom.Id {
 								a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
@@ -215,6 +219,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						room = getFirstRoom(roomsByShorthand)
 						a.Coordinates = room.Coordinates
 						a.lastRoom.Exits[from.Opposite()] = room.Id
+						a.lastRoom.IsTricky = true
 						roomExit, roomHasExit := room.Exits[from.Opposite()]
 						if roomHasExit && roomExit > 0 {
 							room.Exits[from.Opposite()] = a.lastRoom.Id

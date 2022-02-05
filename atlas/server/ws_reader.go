@@ -6,9 +6,10 @@ import (
 )
 
 type Message struct {
-	Command           string
-	ShiftRoomCommand  *ShiftRoomCommand  `json:",omitempty"`
-	DeleteRoomCommand *DeleteRoomCommand `json:",omitempty"`
+	ShiftRoomCommand   *ShiftRoomCommand   `json:",omitempty"`
+	DeleteRoomCommand  *DeleteRoomCommand  `json:",omitempty"`
+	LinkRoomsCommand   *LinkRoomsCommand   `json:",omitempty"`
+	UnlinkRoomsCommand *UnlinkRoomsCommand `json:",omitempty"`
 }
 
 type ShiftRoomCommand struct {
@@ -18,6 +19,18 @@ type ShiftRoomCommand struct {
 
 type DeleteRoomCommand struct {
 	RoomId int
+}
+
+type LinkRoomsCommand struct {
+	FromRoomId    int
+	DirectionFrom string
+	ToRoomId      int
+	DirectionTo   string
+}
+
+type UnlinkRoomsCommand struct {
+	FromRoomId int
+	ToRoomId   int
 }
 
 func (s *Server) wsReader(conn *websocket.Conn) {
@@ -49,20 +62,15 @@ func (s *Server) parseClientMessage(msgBytes []byte) {
 		return
 	}
 
-	switch message.Command {
-	case "shift_room":
-		if message.ShiftRoomCommand == nil {
-			s.logger.Infof("No command payload from client")
-		} else {
-			s.OnShiftRoom(*message.ShiftRoomCommand)
-		}
-	case "delete_room":
-		if message.DeleteRoomCommand == nil {
-			s.logger.Infof("No command payload from client")
-		} else {
-			s.OnDeleteRoom(*message.DeleteRoomCommand)
-		}
-	default:
-		s.logger.Infof("Unknown command from client: %v", message.Command)
+	if message.ShiftRoomCommand != nil {
+		s.OnShiftRoom(*message.ShiftRoomCommand)
+	} else if message.DeleteRoomCommand != nil {
+		s.OnDeleteRoom(*message.DeleteRoomCommand)
+	} else if message.LinkRoomsCommand != nil {
+		s.OnLinkRooms(*message.LinkRoomsCommand)
+	} else if message.UnlinkRoomsCommand != nil {
+		s.OnUnlinkRooms(*message.UnlinkRoomsCommand)
+	} else {
+		s.logger.Infof("Unknown command from client: %v", message)
 	}
 }
