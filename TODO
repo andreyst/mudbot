@@ -1,8 +1,5 @@
 Infra:
     ☐ Handle zlib decompression error: buffer too small
     ✔ Add logging levels @done(22-01-20 00:10)
-    ☐ Add infra for sending warning/messages to client
+    ✔ Add infra for sending warning/messages to client
     ☐ Handle client/server disconnects gracefully
-
-Bot:
-    ☐ Add hungry/thirsty and no longer hungry/thirsty parsing
