@@ -25,6 +25,7 @@ func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bo
 		if exitDir == direction.Opposite() || exitRoomId == 0 {
 			continue
 		}
+		// TODO: Fix shifting when side links are not in the same axis
 		if exitDir != direction || room.Distance(*a.Rooms[exitRoomId]) == 1 {
 			// Do not move in required direction if there is space
 			a.doShift(exitRoomId, direction, visited)

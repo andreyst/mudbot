@@ -9,6 +9,7 @@ import (
 	"mudbot/botutil"
 )
 
+// TODO: Add more comprehensive heuristic for labyrinth mapping
 type Rooms map[int64]*Room
 
 type Atlas struct {
@@ -61,6 +62,8 @@ func (a *Atlas) RecordRelocation() {
 }
 
 func (a *Atlas) RecordRoom(room *Room) *Room {
+	// TODO: Improve finding by coords - find not only immediate neighbour,
+	//       but also when there's a gap between last room and a room
 	var hasMoved bool
 	var movedFrom Direction
 	fromStr := "not moving"
