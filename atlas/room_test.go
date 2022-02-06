@@ -6,7 +6,7 @@ import (
 )
 
 func TestRoom_Shift(t *testing.T) {
-	r := NewRoom()
+	r := NewRoom("room1")
 	r.Shift(DIRECTION_NORTH)
 
 	assert.Equal(t, int64(0), r.Coordinates.X)

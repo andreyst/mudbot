@@ -5,10 +5,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *Server) sendAtlasData(c *websocket.Conn) error {
+func (s *Server) sendAtlasData(c *websocket.Conn, event string) error {
 	atlasData := s.atlasDataProvider()
+	message := struct {
+		Data  interface{}
+		Event string
+	}{
+		Data:  atlasData,
+		Event: event,
+	}
 
-	messageJson, messageMarshalErr := json.MarshalIndent(atlasData, "", "  ")
+	messageJson, messageMarshalErr := json.MarshalIndent(message, "", "  ")
 	if messageMarshalErr != nil {
 		return messageMarshalErr
 	}
@@ -21,26 +28,28 @@ func (s *Server) sendAtlasData(c *websocket.Conn) error {
 	return nil
 }
 
-func (s *Server) wsUpdater(conn *websocket.Conn, updateCh, closeCh chan interface{}) {
+func (s *Server) wsUpdater(conn *websocket.Conn, updateCh chan string, closeCh chan interface{}) {
 	defer close(closeCh)
 
-	sendRoomsErr := s.sendAtlasData(conn)
+	sendRoomsErr := s.sendAtlasData(conn, "init")
 	if sendRoomsErr != nil {
 		s.logger.Errorf("Initial send rooms err: %v", sendRoomsErr)
 		return
 	}
 
 	for {
+		var event string
+		var ok bool
 		select {
-		case _, ok := <-updateCh:
+		case event, ok = <-updateCh:
 			if !ok {
 				return
 			}
 		}
 
-		sendAtlasDataErr := s.sendAtlasData(conn)
+		sendAtlasDataErr := s.sendAtlasData(conn, event)
 		if sendAtlasDataErr != nil {
-			s.logger.Debugf("send atlas data err: %v", sendAtlasDataErr)
+			s.logger.Debugf("send atlas Data err: %v", sendAtlasDataErr)
 			return
 		}
 	}

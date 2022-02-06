@@ -2,7 +2,7 @@ package atlas
 
 func (a *Atlas) dataProvider() interface{} {
 	data := struct {
-		Rooms       map[int64]*Room
+		Rooms       Rooms
 		Coordinates Coordinates
 		Room        *Room
 	}{

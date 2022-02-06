@@ -8,66 +8,29 @@ import (
 func TestAtlas_RecordRoomDoesNotCrashWithoutMovement(t *testing.T) {
 	a := NewAtlas()
 	r := Room{}
-	a.RecordRoom(&r)
+	assert.NotPanics(t, func() { a.RecordRoom(&r) })
 }
 
 func TestAtlas_RecordCannotMoveFeedbackDoesNotCrashWithoutMovement(t *testing.T) {
 	a := NewAtlas()
-	a.RecordCannotMoveFeedback()
+	assert.NotPanics(t, func() { a.RecordCannotMoveFeedback() })
 }
 
-func TestAtlas_Shift(t *testing.T) {
-	atlas := NewAtlas()
+func TestAtlas_RecordRoom(t *testing.T) {
+	a := NewAtlas()
+	// Dereference room template, so we can record it and then use again without ID
+	roomTpl := *NewRoomWithExits("Room1", []Direction{DIRECTION_EAST, DIRECTION_SOUTH})
+	room := roomTpl
+	a.RecordRoom(&room)
+	a.RecordMovement(DIRECTION_EAST)
+	a.RecordRoom(NewRoomWithExits("Room2", []Direction{DIRECTION_WEST, DIRECTION_SOUTH}))
+	a.RecordMovement(DIRECTION_SOUTH)
+	a.RecordRoom(NewRoomWithExits("Room3", []Direction{DIRECTION_NORTH, DIRECTION_EAST}))
+	a.RecordMovement(DIRECTION_WEST)
+	a.RecordRoom(NewRoomWithExits("Room4", []Direction{DIRECTION_NORTH, DIRECTION_EAST}))
+	a.RecordMovement(DIRECTION_NORTH)
+	room = roomTpl
+	a.RecordRoom(&room)
 
-	var room *Room
-
-	room = NewPrefilledRoom("Room 1", "", []Direction{DIRECTION_WEST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_WEST)
-	room = NewPrefilledRoom("Room 2", "", []Direction{DIRECTION_WEST, DIRECTION_EAST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_WEST)
-	room = NewPrefilledRoom("Room 3", "", []Direction{DIRECTION_NORTH, DIRECTION_WEST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_NORTH)
-	room = NewPrefilledRoom("Room 4", "", []Direction{DIRECTION_NORTH, DIRECTION_SOUTH}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_NORTH)
-	room = NewPrefilledRoom("Room 5", "", []Direction{DIRECTION_NORTH, DIRECTION_EAST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_EAST)
-	room = NewPrefilledRoom("Room 6", "", []Direction{DIRECTION_WEST, DIRECTION_EAST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_EAST)
-	room = NewPrefilledRoom("Room 7", "", []Direction{DIRECTION_WEST, DIRECTION_EAST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_EAST)
-	room = NewPrefilledRoom("Room 8", "", []Direction{DIRECTION_WEST, DIRECTION_SOUTH}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_SOUTH)
-	room = NewPrefilledRoom("Room 9", "", []Direction{DIRECTION_WEST, DIRECTION_NORTH}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	atlas.RecordMovement(DIRECTION_WEST)
-	room = NewPrefilledRoom("Room 10", "", []Direction{DIRECTION_EAST}, []string{}, []string{})
-	atlas.RecordRoom(room)
-
-	yBefore := make(map[int64]int64)
-	for i := 1; i < len(atlas.Rooms)+1; i++ {
-		yBefore[int64(i)] = atlas.Rooms[int64(i)].Coordinates.Y
-	}
-
-	atlas.ShiftRoom(2, DIRECTION_NORTH)
-
-	for i := 1; i < len(atlas.Rooms)+1; i++ {
-		assert.Equal(t, yBefore[int64(i)]-1, atlas.Rooms[int64(i)].Coordinates.Y)
-	}
+	assert.Equal(t, 4, len(a.Rooms))
 }

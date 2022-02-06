@@ -9,13 +9,15 @@ import (
 	"mudbot/botutil"
 )
 
+type Rooms map[int64]*Room
+
 type Atlas struct {
 	lastRoom *Room
 
-	Rooms              map[int64]*Room
+	Rooms              Rooms
 	Coordinates        Coordinates
 	nextRoomId         int64
-	roomsByShorthand   map[string]map[int64]*Room
+	roomsByShorthand   map[string]Rooms
 	roomsByCoordinates map[Coordinates]*Room
 
 	movements []Direction
@@ -27,9 +29,9 @@ type Atlas struct {
 
 func NewAtlas() *Atlas {
 	a := Atlas{
-		Rooms:              make(map[int64]*Room),
+		Rooms:              make(Rooms),
 		nextRoomId:         1,
-		roomsByShorthand:   make(map[string]map[int64]*Room),
+		roomsByShorthand:   make(map[string]Rooms),
 		roomsByCoordinates: make(map[Coordinates]*Room),
 		logger:             botutil.NewLogger("atlas"),
 	}
@@ -37,6 +39,7 @@ func NewAtlas() *Atlas {
 	a.server = server.NewServer(a.dataProvider)
 	a.server.OnShiftRoom = a.onShiftRoom
 	a.server.OnDeleteRoom = a.onDeleteRoom
+	a.server.OnLinkRoom = a.onLinkRoom
 	a.server.OnLinkRooms = a.onLinkRooms
 	a.server.OnUnlinkRooms = a.onUnlinkRooms
 
@@ -57,16 +60,16 @@ func (a *Atlas) RecordRelocation() {
 	a.logger.Debugf("Recorded relocation")
 }
 
-func (a *Atlas) RecordRoom(room *Room) {
-	var hasFrom bool
-	var from Direction
+func (a *Atlas) RecordRoom(room *Room) *Room {
+	var hasMoved bool
+	var movedFrom Direction
 	fromStr := "not moving"
 	if len(a.movements) > 0 {
-		from = a.movements[0].Opposite()
+		movedFrom = a.movements[0].Opposite()
 		a.Coordinates.AddDir(a.movements[0])
-		fromStr = from.String()
+		fromStr = movedFrom.String()
 		a.movements = a.movements[1:]
-		hasFrom = true
+		hasMoved = true
 	}
 	room.Coordinates = a.Coordinates
 	var sh string
@@ -95,7 +98,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 					a.logger.Debugf("Cannot find single room by shorthand, move to unambigious and record room to locate self")
 				}
 			}
-		} else if !hasFrom {
+		} else if !hasMoved {
 			// There was no movement.
 			if a.lastRoom.Shorthand() == room.Shorthand() {
 				// Current room is the same as last room – as expected.
@@ -114,7 +117,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 			}
 		} else {
 			// Do we have a linked exit from last room corresponding to where we went?
-			roomIdByExit, hasExit := a.lastRoom.Exits[from.Opposite()]
+			roomIdByExit, hasExit := a.lastRoom.Exits[movedFrom.Opposite()]
 			if !hasExit || roomIdByExit == 0 {
 				// There is no linked exit. Was last room tricky?
 				if !a.lastRoom.IsTricky {
@@ -125,17 +128,19 @@ func (a *Atlas) RecordRoom(room *Room) {
 					var checkByShorthand bool
 					if hasRoomByCoordinates && roomByCoordinates.Shorthand() == room.Shorthand() {
 						// There is such a room by coordinates. Let's check
-						// if its corresponding exit is already linked.
+						// if its corresponding exit is already linked to something else than the last room.
 						a.logger.Debugf("Found room by coordinates")
-						roomByCoordinatesExit := roomByCoordinates.Exits[from]
-						if roomByCoordinatesExit == 0 {
-							// It does not have a linked corresponding exit. Let's use it.
+						roomByCoordinatesExit := roomByCoordinates.Exits[movedFrom]
+						if roomByCoordinatesExit == 0 { // || roomByCoordinatesExit == a.lastRoom.Id
+							// It does not have a linked corresponding exit,
+							// or it points to the room we just left.
+							// Let's use it.
 							room = roomByCoordinates
 							a.Coordinates = room.Coordinates
-							a.lastRoom.Exits[from.Opposite()] = room.Id
-							exitRoomId, hasExit := room.Exits[from]
+							a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
+							exitRoomId, hasExit := room.Exits[movedFrom]
 							if hasExit && exitRoomId == 0 {
-								room.Exits[from] = a.lastRoom.Id
+								room.Exits[movedFrom] = a.lastRoom.Id
 							}
 						} else {
 							// It already has a linked corresponding exit. Let's create a new room.
@@ -155,7 +160,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						roomsByShorthand, hasRoomByShorthand := a.roomsByShorthand[room.Shorthand()]
 						if hasRoomByShorthand && len(roomsByShorthand) == 1 {
 							roomByShorthand := getFirstRoom(roomsByShorthand)
-							_, hasRoomByShorthandExit := roomByShorthand.Exits[from]
+							_, hasRoomByShorthandExit := roomByShorthand.Exits[movedFrom]
 							// TODO: If roomByShorthand is tricky — maybe link to it
 							if hasRoomByShorthandExit ||
 								roomByShorthand.Id == a.lastRoom.Id {
@@ -165,7 +170,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 								a.logger.Debugf("Found room by shorthand, using it")
 								room = roomByShorthand
 								a.Coordinates = room.Coordinates
-								a.lastRoom.Exits[from.Opposite()] = room.Id
+								a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
 							}
 						} else {
 							a.logger.Debugf("No fitting room by shorthand or coordinates found, creating new")
@@ -181,7 +186,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 						a.logger.Debugf("Found room by shorthand, using it")
 						room = getFirstRoom(roomsByShorthand)
 						a.Coordinates = room.Coordinates
-						a.lastRoom.Exits[from.Opposite()] = room.Id
+						a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
 
 						if !room.IsTricky {
 							a.logger.Debugf("Marking it as tricky because moved from tricky room not by coords")
@@ -218,11 +223,11 @@ func (a *Atlas) RecordRoom(room *Room) {
 						a.logger.Debugf("Found room by shorthand, marking last room as tricky because existing exit lead to unexpected room")
 						room = getFirstRoom(roomsByShorthand)
 						a.Coordinates = room.Coordinates
-						a.lastRoom.Exits[from.Opposite()] = room.Id
+						a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
 						a.lastRoom.IsTricky = true
-						roomExit, roomHasExit := room.Exits[from.Opposite()]
+						roomExit, roomHasExit := room.Exits[movedFrom.Opposite()]
 						if roomHasExit && roomExit > 0 {
-							room.Exits[from.Opposite()] = a.lastRoom.Id
+							room.Exits[movedFrom.Opposite()] = a.lastRoom.Id
 						}
 					} else {
 						a.logger.Debugf("Room by shorthand was not tricky")
@@ -231,7 +236,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 
 					// There is such room. Does it have an unlinked exit corresponding
 					// with movement direction
-					//roomByShorthandExit, hasRoomByShorthandExit := roomByShorthand.Exits[from]
+					//roomByShorthandExit, hasRoomByShorthandExit := roomByShorthand.Exits[movedFrom]
 					//if !hasRoomByShorthandExit {
 					//	// There is no exit at all. Is this room we went to tricky?
 					//} else if roomByShorthandExit == 0 {
@@ -239,7 +244,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 					//	// TODO: Redo to picking closest room by shorthand
 					//	//var closestRoomByShorthand *Room
 					//	//for _, roomByShorthand := range roomsByShorthand {
-					//	//	roomByShorthandExit := roomByShorthand.Exits[from]
+					//	//	roomByShorthandExit := roomByShorthand.Exits[movedFrom]
 					//	//	if roomByShorthandExit > 0 {
 					//	//		continue
 					//	//	}
@@ -252,7 +257,7 @@ func (a *Atlas) RecordRoom(room *Room) {
 					//	a.logger.Debugf("Found room by shorthand without linked corresponding exit")
 					//	room = roomByShorthand
 					//	a.Coordinates = room.Coordinates
-					//	a.lastRoom.Exits[from.Opposite()] = room.Id
+					//	a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
 					//	// Not linking back, though.
 					//} else {
 					//	// There is a linked exit.
@@ -300,43 +305,17 @@ func (a *Atlas) RecordRoom(room *Room) {
 		//				a.logger.Debugf("Marking current room as tricky because moved from previous room not by coords")
 		//				room.IsTricky = true
 		//			}
-		//			a.lastRoom.Exits[from.Opposite()] = room.Id
+		//			a.lastRoom.Exits[movedFrom.Opposite()] = room.Id
 		//		}
 		//	}
 		//}
 
 		if createRoom {
-			existingRoomByCoordinates, hasExistingRoomByCoordinates := a.roomsByCoordinates[room.Coordinates]
-			if hasExistingRoomByCoordinates && !hasFrom {
-				a.logger.Errorf("Not creating room becuase it clashes with existing by coordinates, but have no movement to figure out where to shift it")
+			_, hasExistingRoomByCoordinates := a.roomsByCoordinates[room.Coordinates]
+			if hasExistingRoomByCoordinates && !hasMoved {
+				a.logger.Errorf("Not adding a room becuase it clashes with existing by coordinates, but have no movement to figure out where to shift it")
 			} else {
-				if hasExistingRoomByCoordinates {
-					a.ShiftRoom(existingRoomByCoordinates.Id, from.Opposite())
-				}
-
-				room.Id = a.nextRoomId
-				a.nextRoomId++
-				a.Rooms[room.Id] = room
-				if a.roomsByShorthand[room.Shorthand()] == nil {
-					a.roomsByShorthand[room.Shorthand()] = make(map[int64]*Room)
-				}
-				a.roomsByShorthand[room.Shorthand()][room.Id] = room
-				a.roomsByCoordinates[room.Coordinates] = room
-
-				a.logger.Debugf("Created room %+v with id %v", room.Name, room.Id)
-
-				if hasFrom && a.lastRoom != nil {
-					a.lastRoom.Exits[from.Opposite()] = room.Id
-					if _, ok := room.Exits[from]; ok {
-						room.Exits[from] = a.lastRoom.Id
-					} else {
-						a.logger.Debugf("Marking new and previous rooms %v as tricky because of mismatching exits", room.Id)
-						room.IsTricky = true
-						a.lastRoom.IsTricky = true
-						a.logger.Debugf("%+v", a.Rooms[room.Id])
-					}
-					a.logger.Debugf("Linked room %+v with %v (%v)", a.lastRoom.Name, room.Name, from.Opposite())
-				}
+				a.AddRoom(room, hasMoved, movedFrom)
 			}
 		}
 	}
@@ -347,7 +326,17 @@ func (a *Atlas) RecordRoom(room *Room) {
 		a.lastRoom = nil
 	}
 
-	a.server.SendData()
+	event := "movement"
+	if !hasMoved {
+		event = "update"
+	}
+	a.server.SendData(event)
+
+	if room.Id > 0 {
+		return room
+	} else {
+		return nil
+	}
 }
 
 func (a *Atlas) RecordCannotMoveFeedback() {

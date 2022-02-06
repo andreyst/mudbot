@@ -2,13 +2,12 @@ package atlas
 
 import "mudbot/atlas/server"
 
-func (a *Atlas) LinkRooms(fromRoom *Room, fromRoomExit Direction, toRoom *Room, toRoomExit Direction) {
+func (a *Atlas) LinkRoom(fromRoom *Room, fromRoomExit Direction, toRoom *Room) {
 	fromRoom.Exits[fromRoomExit] = toRoom.Id
-	toRoom.Exits[toRoomExit] = fromRoom.Id
-	a.server.SendData("link_rooms")
+	a.server.SendData("link_room")
 }
 
-func (a *Atlas) onLinkRooms(cmd server.LinkRoomsCommand) {
+func (a *Atlas) onLinkRoom(cmd server.LinkRoomCommand) {
 	fromRoom, hasFromRoom := a.Rooms[int64(cmd.FromRoomId)]
 	if !hasFromRoom {
 		a.logger.Debugf("No from room with ID %v", cmd.FromRoomId)
@@ -27,11 +26,5 @@ func (a *Atlas) onLinkRooms(cmd server.LinkRoomsCommand) {
 		return
 	}
 
-	toRoomDirection, okDirectionTo := NewDirection(cmd.ToRoomExit)
-	if !okDirectionTo {
-		a.logger.Errorf("Unknown ToRoomExit: %v", cmd.ToRoomExit)
-		return
-	}
-
-	a.LinkRooms(fromRoom, fromRoomDirection, toRoom, toRoomDirection)
+	a.LinkRoom(fromRoom, fromRoomDirection, toRoom)
 }

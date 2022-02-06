@@ -17,7 +17,7 @@ func (p *Parser) ParseRoom(s string) (room *atlas.Room, matched bool) {
 		return
 	}
 
-	room = atlas.NewRoom()
+	room = atlas.NewEmptyRoom()
 	matched = true
 
 	// TODO: Cover all this in a lot of tests

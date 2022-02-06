@@ -28,13 +28,13 @@
             height: 20px;
         }
         .room.current {
-            border: 1px solid white;
+            background-color: chartreuse;
         }
         .room.highlight {
             border: 1px solid cornflowerblue;
         }
         .room.selected {
-            background-color: chartreuse;
+            border: 1px solid white;
         }
         .exit {
             position:  absolute;
@@ -146,15 +146,20 @@
                 payload = JSON.parse(event.data)
             } catch {
             }
-            if (!payload.Rooms || !payload.Coordinates || payload["Room"] === undefined) {
-                console.error("Missing some fields from event.data", event.data)
+            if (!payload["Data"]["Rooms"] ||
+                !payload["Data"]["Coordinates"] ||
+                payload["Data"]["Room"] === undefined ||
+                !payload["Event"]) {
+                console.error("Missing some fields from payload", payload)
                 return
             }
 
-            currentCoordinates = payload.Coordinates
-            room = payload.Room
-            state.level = currentCoordinates["Z"]
-            updateRooms(payload.Rooms)
+            currentCoordinates = payload["Data"]["Coordinates"]
+            room = payload["Data"]["Room"]
+            if (payload["Event"] === "init" || payload["Event"] === "movement" || payload["Event"] === "update") {
+                state.level = currentCoordinates["Z"]
+            }
+            updateRooms(payload["Data"]["Rooms"])
         };
         state.socket.onclose = function(event) {
             console.info("websocket closed, reconnecting...")
@@ -313,7 +318,6 @@
 
     function sendShiftRoom(roomId, direction) {
         let msg = JSON.stringify({
-            "Command": "shift_room",
             "ShiftRoomCommand": {
                 "RoomId": roomId,
                 "Direction": direction,
@@ -324,9 +328,41 @@
 
     function sendDeleteRoom(roomId) {
         let msg = JSON.stringify({
-            "Command": "delete_room",
             "DeleteRoomCommand": {
                 "RoomId": roomId,
+            }
+        })
+        state.socket.send(msg)
+    }
+
+    function sendLinkRoom(fromRoomId, fromRoomExit, toRoomId) {
+        let msg = JSON.stringify({
+            "LinkRoomCommand": {
+                "FromRoomId": fromRoomId,
+                "FromRoomExit": fromRoomExit,
+                "ToRoomId": toRoomId,
+            }
+        })
+        state.socket.send(msg)
+    }
+
+    function sendLinkRooms(fromRoomId, fromRoomExit, toRoomId, toRoomExit) {
+        let msg = JSON.stringify({
+            "LinkRoomsCommand": {
+                "FromRoomId": fromRoomId,
+                "FromRoomExit": fromRoomExit,
+                "ToRoomId": toRoomId,
+                "ToRoomExit": toRoomExit,
+            }
+        })
+        state.socket.send(msg)
+    }
+
+    function sendUnlinkRooms(fromRoomId, toRoomId) {
+        let msg = JSON.stringify({
+            "UnlinkRoomsCommand": {
+                "FromRoomId": fromRoomId,
+                "ToRoomId": toRoomId,
             }
         })
         state.socket.send(msg)

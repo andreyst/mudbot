@@ -8,6 +8,7 @@ import (
 type Message struct {
 	ShiftRoomCommand   *ShiftRoomCommand   `json:",omitempty"`
 	DeleteRoomCommand  *DeleteRoomCommand  `json:",omitempty"`
+	LinkRoomCommand    *LinkRoomCommand    `json:",omitempty"`
 	LinkRoomsCommand   *LinkRoomsCommand   `json:",omitempty"`
 	UnlinkRoomsCommand *UnlinkRoomsCommand `json:",omitempty"`
 }
@@ -21,11 +22,17 @@ type DeleteRoomCommand struct {
 	RoomId int
 }
 
+type LinkRoomCommand struct {
+	FromRoomId   int
+	FromRoomExit string
+	ToRoomId     int
+}
+
 type LinkRoomsCommand struct {
-	FromRoomId    int
-	DirectionFrom string
-	ToRoomId      int
-	DirectionTo   string
+	FromRoomId   int
+	FromRoomExit string
+	ToRoomId     int
+	ToRoomExit   string
 }
 
 type UnlinkRoomsCommand struct {
@@ -66,6 +73,8 @@ func (s *Server) parseClientMessage(msgBytes []byte) {
 		s.OnShiftRoom(*message.ShiftRoomCommand)
 	} else if message.DeleteRoomCommand != nil {
 		s.OnDeleteRoom(*message.DeleteRoomCommand)
+	} else if message.LinkRoomCommand != nil {
+		s.OnLinkRoom(*message.LinkRoomCommand)
 	} else if message.LinkRoomsCommand != nil {
 		s.OnLinkRooms(*message.LinkRoomsCommand)
 	} else if message.UnlinkRoomsCommand != nil {

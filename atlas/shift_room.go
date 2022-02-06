@@ -11,7 +11,7 @@ func (a *Atlas) ShiftRoom(roomId int64, direction Direction) {
 	a.logger.Debugf("Shifting room %v %v", roomId, direction)
 	visited := make(map[int64]bool)
 	a.doShift(roomId, direction, &visited)
-	a.server.SendData()
+	a.server.SendData("shift_room")
 }
 
 func (a *Atlas) doShift(roomId int64, direction Direction, visited *map[int64]bool) {

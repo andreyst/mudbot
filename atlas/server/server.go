@@ -16,11 +16,12 @@ type Server struct {
 
 	OnShiftRoom   func(ShiftRoomCommand)
 	OnDeleteRoom  func(DeleteRoomCommand)
+	OnLinkRoom    func(LinkRoomCommand)
 	OnLinkRooms   func(LinkRoomsCommand)
 	OnUnlinkRooms func(UnlinkRoomsCommand)
 
 	chNum       int
-	updateChans map[int]chan interface{}
+	updateChans map[int]chan string
 	closeChans  map[int]chan interface{}
 
 	mu sync.Mutex
@@ -32,15 +33,18 @@ func NewServer(atlasDataProvider AtlasDataProvider) *Server {
 	s := Server{
 		atlasDataProvider: atlasDataProvider,
 
-		updateChans: make(map[int]chan interface{}),
+		updateChans: make(map[int]chan string),
 		closeChans:  make(map[int]chan interface{}),
 
 		logger: botutil.NewLogger("atlas_server"),
 	}
 
-	nopCommandHandler := func() { s.logger.Info("Calling nop command handler") }
+	nopCommandHandler := func() { s.logger.Error("Calling nop command handler") }
 	s.OnShiftRoom = func(cmd ShiftRoomCommand) { nopCommandHandler() }
 	s.OnDeleteRoom = func(cmd DeleteRoomCommand) { nopCommandHandler() }
+	s.OnLinkRoom = func(cmd LinkRoomCommand) { nopCommandHandler() }
+	s.OnLinkRooms = func(cmd LinkRoomsCommand) { nopCommandHandler() }
+	s.OnUnlinkRooms = func(cmd UnlinkRoomsCommand) { nopCommandHandler() }
 
 	return &s
 }
@@ -57,10 +61,10 @@ func (s *Server) Start() {
 	}()
 }
 
-func (s *Server) makeUpdateChan() (chan interface{}, chan interface{}) {
+func (s *Server) makeUpdateChan() (chan string, chan interface{}) {
 	s.mu.Lock()
 	s.chNum++
-	updateCh := make(chan interface{})
+	updateCh := make(chan string)
 	closeCh := make(chan interface{})
 	s.updateChans[s.chNum] = updateCh
 	s.closeChans[s.chNum] = closeCh
@@ -70,11 +74,11 @@ func (s *Server) makeUpdateChan() (chan interface{}, chan interface{}) {
 	return updateCh, closeCh
 }
 
-func (s *Server) SendData() {
+func (s *Server) SendData(event string) {
 	s.mu.Lock()
 	for chNum, ch := range s.updateChans {
 		select {
-		case ch <- 0:
+		case ch <- event:
 			s.logger.Infof("Written update to chan %v", chNum)
 		default:
 			s.logger.Infof("Missed update to chan %v", chNum)

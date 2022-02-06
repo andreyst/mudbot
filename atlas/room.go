@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+type Exits map[Direction]int64
+
 type Room struct {
 	Id          int64
 	Coordinates Coordinates
@@ -19,27 +21,38 @@ type Room struct {
 
 	IsTricky bool
 
-	Exits map[Direction]int64
+	Exits Exits
 	Items []string
 	Mobs  []string
 }
 
-func NewRoom() *Room {
+func NewEmptyRoom() *Room {
 	r := Room{
-		Exits: make(map[Direction]int64),
+		Exits: make(Exits),
 	}
 
 	return &r
 }
 
-func NewPrefilledRoom(name string, description string, exits []Direction, items []string, mobs []string) *Room {
-	r := NewRoom()
-
+func NewRoom(name string) *Room {
+	r := NewEmptyRoom()
 	r.Name = name
-	r.Description = description
+
+	return r
+}
+
+func NewRoomWithExits(name string, exits []Direction) *Room {
+	r := NewRoom(name)
 	for _, exit := range exits {
 		r.Exits[exit] = 0
 	}
+	return r
+}
+
+func NewFilledRoom(name string, description string, exits []Direction, items []string, mobs []string) *Room {
+	r := NewRoomWithExits(name, exits)
+
+	r.Description = description
 	r.Items = items
 	r.Mobs = mobs
 
